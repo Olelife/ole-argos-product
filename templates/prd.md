@@ -44,6 +44,16 @@ figma: <url o "—">
 |-----------------|---------|---------|
 | <acción> | <permiso> | <permiso> |
 
+### Especificación de cálculo / algoritmo — si la feature ES un cálculo
+<!-- Si construís una calculadora/motor/algoritmo, el cálculo es PRODUCTO, no implementación. Tiene que poder
+     REPRODUCIRSE solo con el PRD (test de auto-contención). Incluí:
+     - Fórmula y ORDEN DE OPERACIONES (paso a paso, qué entra en cada término).
+     - Reglas de REDONDEO/PRECISIÓN (cuándo y a cuántos decimales) y tolerancia aceptada.
+     - ESQUEMA de las tablas de parámetros (qué dimensiones: ej. edad×término×género×fumador) Y sus VALORES,
+       como artefacto CONGELADO y versionado (snapshot / CSV adjunto al PRD), no una hoja viva editable.
+     - Casos de prueba de paridad (entradas → salida esperada). -->
+
+
 ## 6. Épicas → Historias
 <!-- Desglose para no perder el control del alcance. Cada historia con id estable y criterios verificables.
      Cada historia se convierte en UN RQ en /argos:spec. Usá templates/story.md por historia. -->

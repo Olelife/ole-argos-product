@@ -32,10 +32,17 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
   una tabla (una por campo) — es la **fuente de verdad para Dev y QA**, no la dejes implícita.
 - **Permisos**: con múltiples roles, una **matriz rol × acción/módulo** (CRUD) comunica mejor que la prosa.
 
-## El "cómo" NO va en el PRD
-Layouts pantalla por pantalla, catálogo de popups, modelo de datos, componentes de UI: eso es diseño/
-implementación → lo resuelve Dev en `/argos:spec`. El PRD define **comportamiento, valores y reglas**, no la
-solución técnica. (Un PRD sobre-especificado confunde tanto como uno escueto.)
+## El "cómo" técnico NO va — pero el cálculo SÍ
+- **Implementación** (FUERA del PRD, lo decide Dev en `/argos:spec`): qué servicio/lenguaje, esquema de DB,
+  layout y componentes de UI, framework, infra.
+- **Producto** (SÍ va en el PRD): comportamiento, valores y reglas — **y si la feature ES un cálculo/motor/
+  algoritmo, el cálculo mismo es producto**: fórmula y orden de operaciones, reglas de redondeo/precisión, y
+  el **esquema + valores de las tablas de parámetros**, fijados como **artefacto CONGELADO y versionado**
+  (snapshot / CSV adjunto), nunca "andá a leer la planilla viva".
+
+**Test de auto-contención:** ¿pueden Dev y QA **reproducir el resultado** (al centavo, en una calculadora) usando
+solo el PRD, sin reverse-engineering de una hoja externa? Si no, falta la **Especificación de cálculo**.
+(Un PRD sobre-especificado en UI confunde; uno que omite el cálculo de una calculadora no es una spec.)
 
 ## Historias y trazabilidad
 - Una **épica** = una capability/objetivo; sus **historias** son los incrementos atómicos.
