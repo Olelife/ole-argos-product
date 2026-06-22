@@ -1,6 +1,6 @@
 {
   "name": "argos-product",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Argos para Producto — asistente para crear PRDs estandarizados de Olé: funda el análisis en el cerebro (read-only), acota el alcance, desglosa épicas/historias y deja explícitas las definiciones pendientes. Comando /argos-product:prd.",
   "author": { "name": "Olé Life" }
 }
