@@ -32,17 +32,15 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
   una tabla (una por campo) — es la **fuente de verdad para Dev y QA**, no la dejes implícita.
 - **Permisos**: con múltiples roles, una **matriz rol × acción/módulo** (CRUD) comunica mejor que la prosa.
 
-## El "cómo" técnico NO va — pero el cálculo SÍ
-- **Implementación** (FUERA del PRD, lo decide Dev en `/argos:spec`): qué servicio/lenguaje, esquema de DB,
-  layout y componentes de UI, framework, infra.
-- **Producto** (SÍ va en el PRD): comportamiento, valores y reglas — **y si la feature ES un cálculo/motor/
-  algoritmo, el cálculo mismo es producto**: fórmula y orden de operaciones, reglas de redondeo/precisión, y
-  el **esquema + valores de las tablas de parámetros**, fijados como **artefacto CONGELADO y versionado**
-  (snapshot / CSV adjunto), nunca "andá a leer la planilla viva".
-
-**Test de auto-contención:** ¿pueden Dev y QA **reproducir el resultado** (al centavo, en una calculadora) usando
-solo el PRD, sin reverse-engineering de una hoja externa? Si no, falta la **Especificación de cálculo**.
-(Un PRD sobre-especificado en UI confunde; uno que omite el cálculo de una calculadora no es una spec.)
+## El "cómo" técnico NO va — pero el cálculo SÍ (y conciso)
+- **Implementación** (FUERA del PRD, lo decide Dev): qué servicio/lenguaje, esquema de DB, layout/UI, infra.
+- **Producto** (SÍ va): comportamiento, valores y reglas — y si la feature ES un cálculo/motor, **las fórmulas
+  y el orden de operaciones van en el PRD** (la lógica es producto, y se lee acá).
+- **Los valores** (tablas de tarifas, factores) pueden vivir en un **artefacto referenciado** (ej. un
+  spreadsheet), siempre que esté **identificado y pinneado** (nombre + versión + pestaña/rango). **No los copies
+  al PRD; referencialos con precisión.** El insumo es **PRD + artefacto, juntos**.
+- Evitá los dos extremos: ni duplicar tablas enteras en el PRD, ni un "andá a leer la planilla" sin fórmula,
+  sin versión y sin referencia. **Práctico y conciso**: la fórmula + el puntero exacto a los números.
 
 ## Historias y trazabilidad
 - Una **épica** = una capability/objetivo; sus **historias** son los incrementos atómicos.

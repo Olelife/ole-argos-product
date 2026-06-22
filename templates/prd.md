@@ -44,14 +44,12 @@ figma: <url o "—">
 |-----------------|---------|---------|
 | <acción> | <permiso> | <permiso> |
 
-### Especificación de cálculo / algoritmo — si la feature ES un cálculo
-<!-- Si construís una calculadora/motor/algoritmo, el cálculo es PRODUCTO, no implementación. Tiene que poder
-     REPRODUCIRSE solo con el PRD (test de auto-contención). Incluí:
-     - Fórmula y ORDEN DE OPERACIONES (paso a paso, qué entra en cada término).
-     - Reglas de REDONDEO/PRECISIÓN (cuándo y a cuántos decimales) y tolerancia aceptada.
-     - ESQUEMA de las tablas de parámetros (qué dimensiones: ej. edad×término×género×fumador) Y sus VALORES,
-       como artefacto CONGELADO y versionado (snapshot / CSV adjunto al PRD), no una hoja viva editable.
-     - Casos de prueba de paridad (entradas → salida esperada). -->
+### Cálculo — si la feature ES un cálculo
+<!-- La LÓGICA es producto y va acá; los VALORES se referencian en su fuente pinneada (no se copian).
+     Insumo = este PRD + ese artefacto, juntos. Conciso. -->
+- **Fórmula / orden de operaciones:** <paso a paso — qué entra en cada término>
+- **Redondeo / precisión:** <regla, si aplica>
+- **Valores (tablas/tarifas):** ver `<artefacto>` v`<x>`, pestañas/rangos `<...>` — fuente **pinneada**.
 
 
 ## 6. Épicas → Historias
