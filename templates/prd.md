@@ -52,7 +52,7 @@ figma: <url o "—">
 ### Cálculo — si la feature ES un cálculo
 <!-- La LÓGICA es producto y va acá; los VALORES se referencian en su fuente pinneada (no se copian).
      Insumo = este PRD + ese artefacto, juntos. Conciso. -->
-- **Fórmula / orden de operaciones:** <paso a paso — qué entra en cada término>
+- **Fórmula / orden de operaciones:** <paso a paso — un **diagrama ASCII del pipeline** suele leerse mejor que la prosa>
 - **Redondeo / precisión:** <regla, si aplica>
 - **Valores (tablas/tarifas):** ver `<artefacto>` v`<x>`, pestañas/rangos `<...>` — fuente **pinneada**.
 

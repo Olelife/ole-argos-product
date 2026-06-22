@@ -9,6 +9,7 @@ El PRD lo abre el **desarrollador que toma la tarea**. Tiene que ser **escaneabl
 - Las **historias = sub-tareas** son la **columna vertebral** (cada una: qué construir · criterios · qué queda afuera). Cada una mapea a un RQ.
 - El contexto y las reglas **apoyan**, no tapan. **Formato > prosa**: tablas y bullets, sin párrafos largos.
 - Si una sección no le sirve al Dev para construir, **achicala o sacala**.
+- **Diagrama ASCII simple** cuando un flujo, un **pipeline de cálculo** o una máquina de estados se entiende mejor visual que en prosa (opcional, sin ceremonia — solo si aclara).
 
 ## Principios (de mercado, sin ceremonia)
 - **Working Backwards**: arrancá del problema y el resultado, no de la solución.
