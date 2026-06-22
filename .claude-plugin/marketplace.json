@@ -6,8 +6,8 @@
   "plugins": [
     {
       "name": "argos-product",
-      "source": { "source": "github", "repo": "Olelife/ole-argos-product", "ref": "v1.0.0" },
-      "version": "1.0.0",
+      "source": { "source": "github", "repo": "Olelife/ole-argos-product", "ref": "v1.0.1" },
+      "version": "1.0.1",
       "description": "Motor de Producto de Argos: persona, skill /prd, standard de PRD, templates y setup del cerebro recortado (read-only)."
     }
   ]

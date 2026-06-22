@@ -42,6 +42,13 @@ El asesor puede aprobar o rechazar una póliza pendiente desde el portal, con re
 - **Estado vacío:** sin pólizas pendientes → mensaje "No tenés pólizas por aprobar".
 - **Error:** si falla el guardado, no cambiar el estado y avisar; la acción es reintentable.
 
+### Catálogo de valores (estado de la póliza)
+| Valor | Descripción | Transiciones permitidas |
+|-------|-------------|-------------------------|
+| pending | Solicitada, a la espera de decisión del asesor | → approved · → rejected |
+| approved | Aprobada (con usuario y fecha) | (final) |
+| rejected | Rechazada con motivo (usuario y fecha) | (final) |
+
 ## 6. Épicas → Historias
 
 ### EP-POLICY-APPROVAL-S1 · Aprobar una póliza pendiente

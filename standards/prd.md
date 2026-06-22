@@ -28,6 +28,14 @@ Un PRD listo (`status: ready`) tiene, sin huecos:
 ## Comportamiento: qué cubrir siempre
 Estado inicial · transiciones/estados · reglas de negocio · validaciones de entrada · **permisos/autorización**
 (quién puede) · casos borde · estado vacío · estado de error. Anclá a Figma cuando exista.
+- **Catálogo de valores**: si hay campos enum/estados, listá los valores permitidos y sus **transiciones** en
+  una tabla (una por campo) — es la **fuente de verdad para Dev y QA**, no la dejes implícita.
+- **Permisos**: con múltiples roles, una **matriz rol × acción/módulo** (CRUD) comunica mejor que la prosa.
+
+## El "cómo" NO va en el PRD
+Layouts pantalla por pantalla, catálogo de popups, modelo de datos, componentes de UI: eso es diseño/
+implementación → lo resuelve Dev en `/argos:spec`. El PRD define **comportamiento, valores y reglas**, no la
+solución técnica. (Un PRD sobre-especificado confunde tanto como uno escueto.)
 
 ## Historias y trazabilidad
 - Una **épica** = una capability/objetivo; sus **historias** son los incrementos atómicos.

@@ -31,6 +31,19 @@ figma: <url o "—">
 <!-- El corazón del PRD. Por cada flujo: estados, reglas de negocio, validaciones, permisos,
      casos borde, estados vacíos y de error. Anclá a frames de Figma cuando aplique. -->
 
+### Catálogo de valores (enumeraciones) — si aplica
+<!-- Fuente de verdad de los campos tipo enum: una tabla por campo, con valores permitidos y
+     (si hay máquina de estados) las transiciones. Lo usan Dev y QA. Borrá si no aplica. -->
+| Valor | Descripción | Transiciones permitidas |
+|-------|-------------|-------------------------|
+| <valor> | <qué significa> | → <valores a los que puede pasar> (o "final") |
+
+### Roles y permisos — si hay varios roles
+<!-- Matriz rol × acción/módulo (ej. CRUD). Más clara que prosa cuando hay múltiples roles. -->
+| Acción / Módulo | <Rol A> | <Rol B> |
+|-----------------|---------|---------|
+| <acción> | <permiso> | <permiso> |
+
 ## 6. Épicas → Historias
 <!-- Desglose para no perder el control del alcance. Cada historia con id estable y criterios verificables.
      Cada historia se convierte en UN RQ en /argos:spec. Usá templates/story.md por historia. -->
