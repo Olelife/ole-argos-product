@@ -44,9 +44,13 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
 - **Implementación** (FUERA del PRD, lo decide Dev): qué servicio/lenguaje, esquema de DB, layout/UI, infra.
 - **Producto** (SÍ va): comportamiento, valores y reglas — y si la feature ES un cálculo/motor, **las fórmulas
   y el orden de operaciones van en el PRD** (la lógica es producto, y se lee acá).
-- **Los valores** (tablas de tarifas, factores) pueden vivir en un **artefacto referenciado** (ej. un
-  spreadsheet), siempre que esté **identificado y pinneado** (nombre + versión + pestaña/rango). **No los copies
-  al PRD; referencialos con precisión.** El insumo es **PRD + artefacto, juntos**.
+- **Valores — distinguí dos tipos:**
+  - **Tablas CHICAS de lógica** (band multiplier, factores ROP/modal, claves de lookup, mapeos de índice — un
+    puñado de filas): **van en el PRD**, son algoritmo de producto.
+  - **Tablas GRANDES de datos** (tarifas por edad×término×género×fumador — cientos de filas): se **referencian**
+    en el artefacto **pinneado** (nombre + versión + pestaña/rango); **no se copian**.
+  - El insumo es **PRD + artefacto, juntos**. (Si hay un script/macro detrás del cálculo, **es parte de la spec**:
+    su lógica de lookup e indexación va al PRD.)
 - Evitá los dos extremos: ni duplicar tablas enteras en el PRD, ni un "andá a leer la planilla" sin fórmula,
   sin versión y sin referencia. **Práctico y conciso**: la fórmula + el puntero exacto a los números.
 
