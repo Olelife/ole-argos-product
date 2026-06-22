@@ -3,6 +3,13 @@
 Qué hace que un PRD de Olé sea bueno. Lean y práctico: el objetivo es **acelerar** al PM y darle a Dev
 un insumo claro y acotado — no un documento ceremonial.
 
+## Lo lee el Dev → sintetizado y por sub-tareas
+El PRD lo abre el **desarrollador que toma la tarea**. Tiene que ser **escaneable**:
+- Un **Resumen para Dev** arriba (qué se construye + alcance en una línea + lista de sub-tareas).
+- Las **historias = sub-tareas** son la **columna vertebral** (cada una: qué construir · criterios · qué queda afuera). Cada una mapea a un RQ.
+- El contexto y las reglas **apoyan**, no tapan. **Formato > prosa**: tablas y bullets, sin párrafos largos.
+- Si una sección no le sirve al Dev para construir, **achicala o sacala**.
+
 ## Principios (de mercado, sin ceremonia)
 - **Working Backwards**: arrancá del problema y el resultado, no de la solución.
 - **One-pager primero**: lo esencial en una página; el detalle crece solo donde aporta.

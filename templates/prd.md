@@ -13,6 +13,11 @@ figma: <url o "—">
 
 # <título>
 
+> **Resumen para Dev** (TL;DR — completalo al final, es lo primero que lee quien toma la tarea)
+> - **Qué se construye:** <1-2 líneas>.
+> - **Alcance:** en = <una línea> · fuera = <una línea>.
+> - **Sub-tareas:** S1 <título> · S2 <título> · S3 <título> … (detalle en §6).
+
 ## 1. Problema / Por qué
 <!-- 2-3 frases: el dolor de usuario o negocio. Por qué importa AHORA. (No la solución todavía.) -->
 
