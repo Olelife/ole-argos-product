@@ -6,8 +6,8 @@
   "plugins": [
     {
       "name": "argos-product",
-      "source": { "source": "github", "repo": "Olelife/ole-argos-product", "ref": "v1.3.0" },
-      "version": "1.3.0",
+      "source": { "source": "github", "repo": "Olelife/ole-argos-product", "ref": "v1.4.0" },
+      "version": "1.4.0",
       "description": "Motor de Producto de Argos: PRDs estandarizados (/prd) e intakes versionados con Figma congelado, decision-log y dashboard (/intake); funda en el cerebro (read-only) y escribe en el repo de datos ole-argos-product-data."
     }
   ]
