@@ -21,6 +21,12 @@ Ruta base de datos: `${OLE_REPOS:-<workspace>/repos}/ole-argos-product-data`. Si
 
 ## Verbos (detecto la intención del pedido)
 
+### `listar` / `abrir` — ver todos los intakes y elegir uno
+Disparadores: `/argos-product:intake` **sin slug**, "listar intakes", "qué intakes hay", "abrí un intake", "abrí el tablero de intakes".
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/index-update.mjs" "<repo-datos>"` (regenera `INDEX.md`) y `node "${CLAUDE_PLUGIN_ROOT}/scripts/index-widget.mjs" "<repo-datos>"` (genera `INDEX-widget.html`).
+2. **Leo `INDEX-widget.html` y lo emito con `show_widget`**: una tarjeta por intake (título, estado, dudas abiertas, historias, versiones, última actualización) con botones **Abrir** (→ verbo `ver`) y **Tickets** (→ verbo `tickets`), que retoman por `sendPrompt`. Así el dev elige sin recordar el slug.
+- Si no hay intakes, el widget muestra el estado vacío. Sirve como pantalla de entrada del skill cuando se invoca sin argumentos.
+
 ### `nuevo` — abrir un intake
 Disparadores: "nuevo intake de…", "abrí el intake …", con un PRD (archivo/link) y/o un Figma.
 1. **Slug**: kebab-case corto y estable (ej. `cotizaciones-petra`). Confirmo si es ambiguo.
