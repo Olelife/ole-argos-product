@@ -28,7 +28,7 @@ mkdir -p "${DIR}/analysis" "${DIR}/figma"
 
 fill() { # fill <template> <destino>
   TITLE="${title}" SLUG="${slug}" SLUGUP="${SLUG_UP}" TODAY="${TODAY}" \
-  perl -pe 's/<slug-kebab>/$ENV{SLUG}/g; s/<título del intake>/$ENV{TITLE}/g; s/<título>/$ENV{TITLE}/g; s/<SLUG>/$ENV{SLUGUP}/g; s/<slug>/$ENV{SLUG}/g; s/<YYYY-MM-DD>/$ENV{TODAY}/g' \
+  perl -pe '$_="" if /^\s*<!--.*-->\s*$/; s/<slug-kebab>/$ENV{SLUG}/g; s/<título del intake>/$ENV{TITLE}/g; s/<título>/$ENV{TITLE}/g; s/<SLUG>/$ENV{SLUGUP}/g; s/<slug>/$ENV{SLUG}/g; s/<YYYY-MM-DD>/$ENV{TODAY}/g' \
     "$1" > "$2"
 }
 
