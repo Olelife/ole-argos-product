@@ -6,10 +6,10 @@ estandarizados de Olé: funda el análisis en el conocimiento ya curado (cerebro
 sin sobrecargarte de preguntas.
 
 ## Qué hace
-- `/argos-product:prd` — crea o refina un PRD a partir de tu insumo (borrador, Figma, ticket).
+- `/argos-product:prd` — crea o refina un **PRD suelto** (`PRD-<slug>.md` local) a partir de tu insumo (borrador, Figma, ticket).
+- `/argos-product:intake` — gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** por versión + decision-log de dudas + estados + dashboard.
 - Lee el cerebro **solo para fundamentar** (domain, flows, glossary); **nunca lo modifica**.
-- Produce un **archivo local** (`PRD-<slug>.md`) que entregás como hoy. No hay repo de salida.
-- `/argos-product:setup` — baja el cerebro recortado y read-only (una vez).
+- `/argos-product:setup` — clona el cerebro recortado (read-only) y el repo de datos `ole-argos-product-data` (read-write).
 
 ## Instalar
 ```bash
@@ -18,13 +18,15 @@ claude plugin install argos-product@argos-product-mkt --scope project
 # reiniciá Claude Code, luego:  /argos-product:setup
 ```
 
-## Modelo (importante)
+## Modelo (importante) — 3 piezas
 ```
-Producto  ── lee (read-only) ──►  ole-argos-brain   (lo escribe Dev, no Producto)
-          ── escribe ──►          PRD-<slug>.md (archivo local, lo entregás)
-                                       │
-Dev  /argos:spec  ◄────────────────────┘  (cada historia del PRD → un RQ)
+  🧩 argos-product (motor, plugin)  ──escribe──►  📦 ole-argos-product-data (datos, repo)
+        │ lee (read-only)                               │ handoff: cada historia → un RQ
+        ▼                                               ▼
+  🧠 ole-argos-brain (cerebro)  ◄──escribe (al cerrar el RQ)──  🧩 argos (motor Dev) /argos:spec
 ```
+- **Producto escribe SOLO** en `ole-argos-product-data`; **lee** el cerebro read-only.
+- El **cerebro** describe el sistema *as-built* (código). Un intake es *to-be* tentativo: **cruza al cerebro solo cuando su RQ se implementa y cierra**.
 
 > **Permisos:** los miembros de Producto deben tener acceso **read-only** a `Olelife/ole-argos-brain`.
 > Ese permiso es la garantía dura de que Producto no puede modificar el cerebro; el plugin, además,

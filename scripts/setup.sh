@@ -64,7 +64,27 @@ else
   fi
 fi
 
+# --- repo de DATOS de intake (read-write: acá escribe Producto) ---
+DATA_REPO="ole-argos-product-data"
+case "${PROTO}" in https) DURL="https://github.com/${ORG}/${DATA_REPO}.git" ;; *) DURL="git@github.com:${ORG}/${DATA_REPO}.git" ;; esac
+DDEST="${OLE_REPOS}/${DATA_REPO}"
+if git -C "${DDEST}" rev-parse --verify --quiet HEAD >/dev/null 2>&1; then
+  echo "• ${DATA_REPO}: ya está, refresco."
+  run_timed 180 git -C "${DDEST}" pull --ff-only --quiet 2>/dev/null || echo "  (no pude refrescar, sigo con lo local)"
+else
+  [ -e "${DDEST}" ] && rm -rf "${DDEST}"
+  echo "• ${DATA_REPO}: clonando (con LFS)…"
+  if run_timed 240 git clone --quiet "${DURL}" "${DDEST}"; then
+    command -v git-lfs >/dev/null 2>&1 && git -C "${DDEST}" lfs pull 2>/dev/null || true
+    echo "  ✓ datos en repos/${DATA_REPO}"
+  else
+    rm -rf "${DDEST}"
+    echo "  ✗ no pude clonar ${ORG}/${DATA_REPO} (¿acceso? ¿red? ¿git-lfs instalado?)."
+  fi
+fi
+
 echo
-echo "🗿  Listo. Recordá: el cerebro es SOLO LECTURA (lo cura Dev)."
-echo "    Arrancá un PRD con /argos-product:prd. La salida es un archivo local que entregás."
+echo "🗿  Listo. El cerebro es SOLO LECTURA (lo cura Dev); los intakes se escriben en repos/${DATA_REPO}."
+echo "    • PRD suelto (como hoy):      /argos-product:prd"
+echo "    • Intake versionado + Figma:  /argos-product:intake"
 exit 0
