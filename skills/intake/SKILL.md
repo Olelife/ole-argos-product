@@ -65,7 +65,10 @@ Cada issue lleva un **label único** de trazabilidad: la épica `intake-<slug>-e
 Solo si **ambas** dan vacío, creo el issue **con** su label único, y **escribo el key de vuelta** en `stories.md` (columna Jira, estado `en-Jira`). Orden: **épica primero** (su key es el parent de las historias); si la épica ya existe por su label, reutilizo su key. Así, mandar la creación de una historia ya procesada es **no-op idempotente** (te devuelvo el key existente), tanto por-historia como en "crear todas".
 
 ### `tickets` / widget de creación
-Disparadores: "mostrame los tickets", "widget de Jira de X". Emito un **widget** (una tarjeta por issue, editable) leyendo `stories.md` + `jira-preview.md`: las historias ya creadas se muestran con su key (`✓ SO-XXXX`, botón deshabilitado); las pendientes con "Crear en Jira" que dispara la creación idempotente vía `sendPrompt`. La fuente de verdad es `stories.md`; el widget es superficie.
+Disparadores: "mostrame los tickets", "widget de Jira de X".
+1. Corro `node "${CLAUDE_PLUGIN_ROOT}/scripts/widget-gen.mjs" "intakes/<slug>" <proyecto>` → genera `intakes/<slug>/tickets-widget.html` **desde `stories.md`** (estado real).
+2. **Leo ese archivo y lo emito con el widget de visualización** (`show_widget`), pasándolo como `widget_code`.
+- Las historias con key de Jira se muestran con `✓ <key>` (botón deshabilitado); las pendientes con "Crear en Jira" que dispara la **creación idempotente** vía `sendPrompt` (doble llave). El detalle editable de cada historia vive en `jira-preview.md`; el estado, en `stories.md`. El widget es superficie regenerable.
 
 ## Congelado del Figma (procedimiento)
 El congelado combina el MCP de Figma (lo llamo yo) + `figma-freeze.mjs` (mecánica). **Las URLs de screenshot del MCP son efímeras** → hay que descargar en el momento.
