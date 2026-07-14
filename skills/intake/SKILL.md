@@ -53,9 +53,19 @@ Disparadores: "mostrame el intake X", "cómo va X".
 ### `aprobar` — cerrar el borrador y cortar historias
 Disparadores: "aprobá el intake X", "está listo X".
 1. Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" intakes/<slug>/PRD-<slug>.md` — no apruebo con obligatorios en hueco ni alcance sin acotar ni dudas `abierta` que cambien alcance.
-2. **STATUS** = `ready`. Congelo la versión del PRD/Figma.
-3. **Handoff a Jira (F3, con GATE)**: propongo el árbol épica→historias y **espero tu confirmación explícita** antes de crear nada. La escritura usa el **MCP oficial de Atlassian** (si está conectado; si no, aviso y dejo el árbol listo para pegar). Nunca creo issues en masa sin tu OK.
-4. Al pasar cada historia a `en-Jira`/`en-RQ`/`cerrada`, actualizo `stories.md` (el estado de ejecución lo manda Jira; yo lo reflejo).
+2. **Genero el gate** `intakes/<slug>/jira-preview.md` desde `${CLAUDE_PLUGIN_ROOT}/templates/jira-preview.md`, poblándolo con las historias del PRD §6 (título, descripción Como/Quiero/Para + criterios) y los **links de Figma** (mapeo frame→node-id de `figma/vN/structure.json`). El dev revisa/edita ese archivo — **es la fuente desde la que se crea**.
+3. **STATUS** = `ready`. Congelo la versión del PRD/Figma.
+4. **Handoff a Jira — con GATE + IDEMPOTENCIA.** Espero tu **confirmación explícita** antes de crear nada. La escritura usa el **MCP de Atlassian**; si no está disponible en el runtime, **no invento**: dejo `jira-preview.md` como fallback listo para pegar (ver [[atlassian-mcp-runtime-vs-cli]]). Nunca creo en masa sin tu OK.
+
+### Creación idempotente (nunca duplica)
+Cada issue lleva un **label único** de trazabilidad: la épica `intake-<slug>-epic`, cada historia `intake-<slug>-s<n>`. Antes de crear **cualquier** issue, chequeo **doble llave**:
+1. **`stories.md`** (registro local): si esa fila ya tiene un `Jira` key → **no creo**, reutilizo ese key.
+2. **JQL en Jira**: `project = <PROY> AND labels = "intake-<slug>-s<n>"` → si ya existe → **no creo**, vinculo el que hay y sincronizo `stories.md`.
+
+Solo si **ambas** dan vacío, creo el issue **con** su label único, y **escribo el key de vuelta** en `stories.md` (columna Jira, estado `en-Jira`). Orden: **épica primero** (su key es el parent de las historias); si la épica ya existe por su label, reutilizo su key. Así, mandar la creación de una historia ya procesada es **no-op idempotente** (te devuelvo el key existente), tanto por-historia como en "crear todas".
+
+### `tickets` / widget de creación
+Disparadores: "mostrame los tickets", "widget de Jira de X". Emito un **widget** (una tarjeta por issue, editable) leyendo `stories.md` + `jira-preview.md`: las historias ya creadas se muestran con su key (`✓ SO-XXXX`, botón deshabilitado); las pendientes con "Crear en Jira" que dispara la creación idempotente vía `sendPrompt`. La fuente de verdad es `stories.md`; el widget es superficie.
 
 ## Congelado del Figma (procedimiento)
 El congelado combina el MCP de Figma (lo llamo yo) + `figma-freeze.mjs` (mecánica). **Las URLs de screenshot del MCP son efímeras** → hay que descargar en el momento.

@@ -1,6 +1,6 @@
 {
   "name": "argos-product",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Argos para Producto — crea PRDs estandarizados de Olé y gestiona intakes versionados (PRD + Figma congelado + decision-log + dashboard) en el repo de datos, fundados en el cerebro (read-only). Comandos /argos-product:prd, /argos-product:intake, /argos-product:setup.",
   "author": { "name": "Olé Life" }
 }
