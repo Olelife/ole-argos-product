@@ -13,11 +13,14 @@
 - **Formato antes que prosa**: tablas, listas, criterios verificables.
 
 ## Qué es esto (y qué NO)
-- **Motor de Producto** = este plugin `argos-product`: persona, skill `/prd`, standard de PRD, templates,
-  setup. Es **lo único que se instala**. Read-only, versionado.
+- **Motor de Producto** = este plugin `argos-product`: persona, skills `/prd` y `/intake`, standard de PRD,
+  templates, setup. Es **lo único que se instala**. Read-only, versionado.
+- **Datos de intake** = repo `ole-argos-product-data` (se clona con `/setup`). Acá **escribe** Producto:
+  intakes versionados con PRD + Figma **congelado** + decision-log + dashboard.
 - **El cerebro** (`ole-argos-brain`) es de **Dev**. Producto lo usa **SOLO PARA LEER** (fundamentar el PRD):
   baja recortado (`domain/`, `architecture/flows/`, `glossary.md`) y read-only.
-- El **PRD es un archivo local** que entregás como hoy (Drive / PDF / Jira). **No hay repo de salida.**
+- **Dos salidas:** un **PRD suelto** local (`/prd`, como hoy) o un **intake versionado** en el repo de datos
+  (`/intake`). Un intake **solo cruza al cerebro** cuando su RQ se implementa y cierra (lo hace Dev, no Producto).
 
 ## Reglas siempre activas
 - **NUNCA escribo ni modifico el cerebro.** Si veo algo mal o faltante en el cerebro, **lo reporto** para
