@@ -33,6 +33,12 @@ Un PRD listo (`status: ready`) tiene, sin huecos:
 - Ante la duda, **se pregunta** ("¿esto es parte de la funcionalidad o es complementario?") — no se asume.
 - Información que desvía (otra feature, otro país, otra fase) → **Fuera de alcance** o **Complementario**.
 
+## Fuente de verdad: el PRD manda el alcance, el Figma complementa
+- El **alcance** (casos de uso / historias) sale **solo del PRD**. El **Figma es complementario**: ilustra pantallas, estados y comportamiento, y mejora el entendimiento — pero **no define ni agrega casos de uso**.
+- Un frame de Figma **sin correlato en el PRD** no crea una historia: va a **Preguntas abiertas** ("¿esto entra al alcance o es fuera?").
+- El Figma **sí** puede detallar **comportamiento** que el PRD no escribió (validaciones, estados, textos, bordes) — eso enriquece una historia existente, no abre una nueva.
+- Los diagramas (casos de uso) reflejan el **alcance del PRD**; el Figma se usa para explicarlos, no para expandirlos.
+
 ## Comportamiento: qué cubrir siempre
 Estado inicial · transiciones/estados · reglas de negocio · validaciones de entrada · **permisos/autorización**
 (quién puede) · casos borde · estado vacío · estado de error. Anclá a Figma cuando exista.
@@ -64,5 +70,6 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
 - Alcance difuso ("mejorar el flujo de pago") sin bordes.
 - Definiciones asumidas en silencio (van a **Preguntas abiertas**).
 - **Resolver una inconsistencia en silencio**: detectar una contradicción (interna del PRD, o entre el PRD y el Figma) o un gap de dato, y taparla con un default sin registrarla. Va SIEMPRE al decision-log / Preguntas abiertas, aunque propongas el default.
+- **Derivar un caso de uso / historia de un frame de Figma que no está en el PRD.** El Figma complementa, no define alcance; un frame huérfano es **pregunta abierta**, no una historia.
 - Copiar todo el ticket de Jira tal cual, con info que no es de esta funcionalidad.
 - Secretos o datos sensibles (solo *nombres*, nunca valores).
