@@ -27,9 +27,10 @@ Disparadores: "nuevo intake de…", "abrí el intake …", con un PRD (archivo/l
 2. **Scaffold**: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/intake-new.sh" <slug> "<título>"` — crea `intakes/<slug>/` desde los templates (STATUS, PRD, decision-log, stories, analysis/, figma/).
 3. **Congelar Figma** (ver *Congelado del Figma* abajo) → `figma/v1/`.
 4. **Redactar el PRD**: aplico el flujo de `/prd` (standard + `templates/prd.md`) sobre `intakes/<slug>/PRD-<slug>.md`, fundado en el cerebro (read-only) y anclado a una `capability`.
-5. **Sembrar el decision-log**: cada inconsistencia/duda detectada → una fila `abierta` (con mi lectura y un default propuesto).
-6. **Historias**: desgloso épica → historias (`EP-<SLUG>-S<n>`) en `stories.md`, estado `propuesta`.
-7. **STATUS** = `draft`. **Dashboard** + **INDEX** (ver abajo).
+5. **Auditoría de inconsistencias** (obligatoria) → `decision-log`: barro sistemáticamente (a) contradicciones **internas** del PRD/insumo (tablas que se contradicen, criterios que no cubren una regla, numeración rota, valores fuera de rango) y (b) **cruces PRD↔Figma** (lo que dice el texto vs lo que muestran los frames congelados: umbrales, campos, textos, estados). **Toda** contradicción, gap de dato o ambigüedad va como fila `abierta` con un default propuesto. Si la aplico al PRD, queda `aplicada-al-PRD` — **nunca la resuelvo en silencio** (ver Reglas). Checklist de cruce: cada regla numérica y cada campo del Figma debe existir/coincidir en el PRD y en el modelo.
+6. **Diagramas** (`analysis/`): escribo los `.mmd` (casos de uso, componentes, actividad E2E, actividad del cotizador, estados) y los renderizo con `bash "${CLAUDE_PLUGIN_ROOT}/scripts/diagrams-gen.sh" "intakes/<slug>/analysis"` (best-effort: si `mmdc` no está, dejo los `.mmd` y aviso). El dashboard los embebe.
+7. **Historias**: desgloso épica → historias (`EP-<SLUG>-S<n>`) en `stories.md`, estado `propuesta`.
+8. **STATUS** = `draft`. **Dashboard** + **INDEX** (ver abajo).
 
 ### `duda` — resolver / mover una duda
 Disparadores: "respondé la duda N de X", "la duda N es …", "descartá la duda N".
@@ -41,7 +42,8 @@ Disparadores: "respondé la duda N de X", "la duda N es …", "descartá la duda
 Disparadores: "subí el PRD v2.3", "hay nuevo Figma", "re-analizá X".
 - **Figma**: congelo en `figma/vN+1/` (nunca piso vN) y **diffeo** `structure.json` contra la versión previa → reporto frames añadidos/eliminados/redimensionados; re-capturo los que cambiaron.
 - **PRD**: actualizo el PRD y anoto en el decision-log qué dudas resolvió/creó esta versión.
-- Bump `prd_version`/`figma_version` en STATUS. Regenero dashboard + INDEX.
+- **Re-auditoría**: vuelvo a correr la auditoría de inconsistencias (paso 5 de `nuevo`) sobre lo que cambió; nuevas contradicciones → filas `abierta`.
+- Regenero diagramas afectados (`analysis/`). Bump `prd_version`/`figma_version` en STATUS. Regenero dashboard + INDEX.
 
 ### `ver` — dashboard amigable
 Disparadores: "mostrame el intake X", "cómo va X".
@@ -58,13 +60,14 @@ Disparadores: "aprobá el intake X", "está listo X".
 ## Congelado del Figma (procedimiento)
 El congelado combina el MCP de Figma (lo llamo yo) + `figma-freeze.mjs` (mecánica). **Las URLs de screenshot del MCP son efímeras** → hay que descargar en el momento.
 1. `get_metadata(fileKey)` → lista de frames top-level (name · node-id · tamaño).
-2. **v1 = Figma completo**; en versiones siguientes, solo los frames que cambiaron (política del RFC-001).
+2. **v1 = Figma completo** = **todos los frames de pantalla top-level** (vistas y estados). **Excluyo componentes sueltos** (botones, inputs, chips: nodos chicos —regla práctica ancho < 320px— o cuyo nombre es de componente, no de pantalla). En versiones siguientes, solo los frames que cambiaron (RFC-001).
 3. Por frame: `get_screenshot(fileKey, nodeId)` → URL efímera.
 4. Armo un JSON de captura `{fileKey, url, capturedAt, frames:[{nodeId,name,w,h,imageUrl}]}` y lo paso a
    `node "${CLAUDE_PLUGIN_ROOT}/scripts/figma-freeze.mjs" <intakes/<slug>/figma/vN> <captura.json>` → descarga `frames/*.png` (LFS), escribe `MANIFEST.md` y `structure.json`.
 5. `capturedAt` lo paso yo (no uso relojes dentro de scripts de workflow).
 
 ## Reglas
+- **Ninguna inconsistencia se resuelve en silencio.** Toda contradicción (interna o PRD↔Figma) o gap de dato va al `decision-log`, aunque proponga un default. Taparla callado en el PRD es anti-patrón.
 - **Escribo SOLO en el repo de datos.** Nunca toco el cerebro (lo leo para fundamentar).
 - **No apruebo** (`ready`) con alcance sin acotar u obligatorios con hueco.
 - **Jira con gate**: jamás creo/muevo issues sin confirmación explícita tuya.

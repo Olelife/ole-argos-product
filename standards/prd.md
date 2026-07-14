@@ -63,5 +63,6 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
 - PRD que describe la **solución técnica** en vez del comportamiento (eso lo decide Dev en `/argos:spec`).
 - Alcance difuso ("mejorar el flujo de pago") sin bordes.
 - Definiciones asumidas en silencio (van a **Preguntas abiertas**).
+- **Resolver una inconsistencia en silencio**: detectar una contradicción (interna del PRD, o entre el PRD y el Figma) o un gap de dato, y taparla con un default sin registrarla. Va SIEMPRE al decision-log / Preguntas abiertas, aunque propongas el default.
 - Copiar todo el ticket de Jira tal cual, con info que no es de esta funcionalidad.
 - Secretos o datos sensibles (solo *nombres*, nunca valores).

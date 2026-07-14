@@ -45,7 +45,8 @@ const dudaRows = dudas.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><
 const storyRows = stories.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td>${badge(r[2], storyCls(r[2]))}</td><td class="dim">${esc(r[3] || '—')}</td><td class="dim">${esc(r[4] || '—')}</td></tr>`).join('');
 const figRows = figmaVers.map(f => `<tr><td class="mono">${esc(f.v)}</td><td>${f.n} frames</td><td class="dim">${esc(f.scope)}</td><td class="dim">${esc(f.at)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">sin snapshots</td></tr>';
 
-const html = `<style>
+const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
+<style>
   .wrap{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#22314f;max-width:1000px;margin:0 auto;padding:8px}
   .wrap h1{font-size:26px;margin:0 0 2px} .wrap h2{font-size:16px;margin:26px 0 10px;color:#12b886;text-transform:uppercase;letter-spacing:.04em}
   .meta{color:#6b7a90;font-size:13px;margin:6px 0 2px} .meta b{color:#22314f}
