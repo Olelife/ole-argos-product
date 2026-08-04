@@ -10,7 +10,8 @@
 //   "project": "SO",
 //   "epics": ["SO-668","SO-790"],
 //   "stageOrder": ["Tareas por hacer","En curso","Staging","Ready to Prod"], // última = meta
-//   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3}, ... ],  // weight opcional
+//   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3,"summary":"…"}, ... ], // weight y summary opcionales
+//   "jiraBase": "https://olelife.atlassian.net",  // opcional: base para los links de las historias
 //   "throughputRecentPerWeek": 10,         // opcional: ritmo reciente a la meta (hist/sem)
 //   "scenarios": [ {"name":"B · Realista","cond":"…","ratePerWeek":4.5,"best":true}, … ], // opcional
 //   "finding": {"title":"…","body":"…","stats":[{"k":"→ Staging 14d","v":"37"}, …]},      // opcional
@@ -32,6 +33,7 @@ const D = JSON.parse(readFileSync(inPath, 'utf8'));
 const stageOrder = D.stageOrder && D.stageOrder.length ? D.stageOrder : ['Tareas por hacer', 'En curso', 'Staging', 'Ready to Prod'];
 const goal = stageOrder[stageOrder.length - 1];
 const issues = (D.issues || []).filter(i => i && i.status);
+const jiraBase = (D.jiraBase || 'https://olelife.atlassian.net').replace(/\/+$/, '');
 const hasWeights = issues.some(i => typeof i.weight === 'number' && i.weight > 0);
 const w = i => hasWeights ? (typeof i.weight === 'number' && i.weight > 0 ? i.weight : 1) : 1;
 
@@ -45,11 +47,12 @@ function stageColor(idx, n) {
 
 // agrupar por etapa (en el orden dado); estados no mapeados → bucket "Sin mapear"
 const idxOf = {}; stageOrder.forEach((s, i) => idxOf[s] = i);
-const buckets = stageOrder.map((name, i) => ({ name, i, color: stageColor(i, stageOrder.length), n: 0, pts: 0 }));
-const unmapped = { name: 'Sin mapear', color: '#C63E29', n: 0, pts: 0, keys: [] };
+const buckets = stageOrder.map((name, i) => ({ name, i, color: stageColor(i, stageOrder.length), n: 0, pts: 0, items: [] }));
+const unmapped = { name: 'Sin mapear', color: '#C63E29', n: 0, pts: 0, keys: [], items: [] };
 for (const it of issues) {
-  if (it.status in idxOf) { const b = buckets[idxOf[it.status]]; b.n++; b.pts += w(it); }
-  else { unmapped.n++; unmapped.pts += w(it); unmapped.keys.push(it.key); }
+  const rec = { key: it.key || '', summary: it.summary || '', weight: w(it) };
+  if (it.status in idxOf) { const b = buckets[idxOf[it.status]]; b.n++; b.pts += w(it); b.items.push(rec); }
+  else { unmapped.n++; unmapped.pts += w(it); unmapped.keys.push(it.key); unmapped.items.push(rec); }
 }
 const totalN = issues.length;
 const totalPts = buckets.reduce((a, b) => a + b.pts, 0) + unmapped.pts;
@@ -96,9 +99,17 @@ const barSegs = buckets.concat(unmapped.n ? [unmapped] : [])
   .map(b => `<span style="width:${pct(b.n, totalN)}%;background:${b.color}" title="${esc(b.name)}: ${b.n}"></span>`).join('');
 const legend = buckets.concat(unmapped.n ? [unmapped] : []).map(b =>
   `<span class="lg"><span class="dot" style="background:${b.color}"></span>${esc(b.name)} <b>${b.n}</b></span>`).join('');
-const rows = buckets.concat(unmapped.n ? [unmapped] : []).map(b =>
-  `<tr><td><span class="st"><span class="dot" style="background:${b.color}"></span>${esc(b.name)}</span></td>` +
-  `<td>${b.n}</td><td>${hasWeights ? b.pts : '—'}</td><td>${hasWeights ? pct(b.pts, totalPts) + '%' : pct(b.n, totalN) + '%'}</td></tr>`).join('');
+const rows = buckets.concat(unmapped.n ? [unmapped] : []).map((b, bi) => {
+  const detId = `det-${bi}`;
+  const items = b.items.length
+    ? b.items.map(it => `<li><a href="${jiraBase}/browse/${esc(it.key)}">${esc(it.key)}</a>${it.summary ? ` <span>${esc(it.summary)}</span>` : ''}</li>`).join('')
+    : '<li class="empty">Sin historias en esta etapa.</li>';
+  const head = `<tr class="etapa" role="button" tabindex="0" aria-expanded="false" aria-controls="${detId}" data-det="${detId}">` +
+    `<td><span class="st"><span class="dot" style="background:${b.color}"></span>${esc(b.name)}<i class="chev" aria-hidden="true">▸</i></span></td>` +
+    `<td>${b.n}</td><td>${hasWeights ? b.pts : '—'}</td><td>${hasWeights ? pct(b.pts, totalPts) + '%' : pct(b.n, totalN) + '%'}</td></tr>`;
+  const det = `<tr class="detrow" id="${detId}" hidden><td colspan="4"><ul class="ilist">${items}</ul></td></tr>`;
+  return head + det;
+}).join('');
 
 const heroBig = hasWeights
   ? `${Math.min(dodCount, dodPts)}–${Math.max(dodCount, dodPts)}<span style="font-size:.5em">%</span>`
@@ -204,6 +215,18 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
   tbody td{font-family:var(--font-mono)}
   tbody td:first-child{font-family:var(--font-sans)}
   .st{display:inline-flex;align-items:center;gap:8px;font-weight:500}
+  tr.etapa{cursor:pointer}
+  tr.etapa:hover td{background:var(--surface-2)}
+  tr.etapa:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .chev{font-style:normal;color:var(--faint);margin-left:2px;transition:transform .15s ease;display:inline-block}
+  tr.etapa[aria-expanded="true"] .chev{transform:rotate(90deg)}
+  tr.detrow>td{padding:0 10px 4px}
+  .ilist{list-style:none;margin:2px 0 10px;padding:0;display:grid;gap:6px}
+  .ilist li{display:flex;gap:10px;align-items:baseline;font-size:13.5px;padding:6px 10px;background:var(--surface-2);border-radius:8px}
+  .ilist li.empty{color:var(--faint);font-style:italic;background:transparent}
+  .ilist a{font-family:var(--font-mono);font-weight:600;color:var(--accent);text-decoration:none;flex:none}
+  .ilist span{color:var(--muted)}
+  .hint{font-size:12.5px;color:var(--faint);margin:8px 0 0}
   .scen{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:640px){.scen{grid-template-columns:1fr}}
   .sc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative}
@@ -262,13 +285,32 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
         <tbody>${rows}</tbody>
       </table>
     </div>
+    <p class="hint">Tocá una etapa para ver sus historias.</p>
   </section>
 ${projBlock}${findingBlock}${risksBlock}
   <footer>
     <p><b>Cómo leer este reporte.</b> El avance se mide como porcentaje del alcance que cumple la Definition of Done (aquí, «${esc(goal)}»); el número «con crédito parcial» es un termómetro interno y no el avance oficial. ${footWeights} La proyección es por escenarios de ritmo.</p>
     <p><b>Fuente:</b> Jira${D.project ? ` proyecto ${esc(D.project)}` : ''}${D.epics && D.epics.length ? `, épicas ${D.epics.map(esc).join(', ')}` : ''}, corte ${esc(D.capturedAt || '—')}. Generado por el skill <code>argos-product:intake</code> (verbo <code>avance</code>).</p>
   </footer>
-</div>`;
+</div>
+<script>
+(function(){
+  function toggle(row){
+    var det=document.getElementById(row.getAttribute("aria-controls"));
+    if(!det)return;
+    var open=row.getAttribute("aria-expanded")==="true";
+    row.setAttribute("aria-expanded",String(!open));
+    det.hidden=open;
+  }
+  var rows=document.querySelectorAll("tr.etapa");
+  for(var i=0;i<rows.length;i++){
+    rows[i].addEventListener("click",function(){toggle(this);});
+    rows[i].addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(this);}
+    });
+  }
+})();
+</script>`;
 
 writeFileSync(join(dir, 'avance.html'), html);
 console.log(`✓ avance: ${join(dir, 'avance.html')}`);
