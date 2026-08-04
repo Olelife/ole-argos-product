@@ -102,13 +102,19 @@ const legend = buckets.concat(unmapped.n ? [unmapped] : []).map(b =>
   `<span class="lg"><span class="dot" style="background:${b.color}"></span>${esc(b.name)} <b>${b.n}</b></span>`).join('');
 const rows = buckets.concat(unmapped.n ? [unmapped] : []).map((b, bi) => {
   const detId = `det-${bi}`;
-  const bugBadge = it => {
-    const bg = it.bugs; if (!bg || !bg.total) return '';
-    if (bg.open > 0) return `<span class="bugs open" title="bugs sin resolver: ${esc((bg.openKeys || []).join(', '))}">${bg.open} bug${bg.open > 1 ? 's' : ''} abierto${bg.open > 1 ? 's' : ''}</span>`;
-    return `<span class="bugs done" title="bugs (resueltos): ${esc((bg.keys || []).join(', '))}">${bg.total} bug${bg.total > 1 ? 's' : ''} ✓</span>`;
-  };
   const items = b.items.length
-    ? b.items.map(it => `<li><a href="${jiraBase}/browse/${esc(it.key)}">${esc(it.key)}</a><span class="sm">${esc(it.summary || '')}</span>${bugBadge(it)}<span class="asg">${it.assignee ? esc(it.assignee) : 'Sin asignar'}</span></li>`).join('')
+    ? b.items.map((it, j) => {
+      const bg = it.bugs;
+      let badge = '', buglist = '';
+      if (bg && bg.total) {
+        const blId = `bl-${bi}-${j}`;
+        const label = bg.open > 0 ? `${bg.open} bug${bg.open > 1 ? 's' : ''} abierto${bg.open > 1 ? 's' : ''}` : `${bg.total} bug${bg.total > 1 ? 's' : ''} ✓`;
+        badge = `<button class="bugs ${bg.open > 0 ? 'open' : 'done'}" aria-expanded="false" aria-controls="${blId}">${esc(label)}</button>`;
+        const brows = (bg.items || []).map(x => `<div class="bug"><a href="${jiraBase}/browse/${esc(x.key)}">${esc(x.key)}</a><span class="bst ${x.open ? 'open' : 'done'}">${esc(x.status || '')}</span><span class="bsm">${esc(x.summary || '')}</span><span class="basg">${esc(x.assignee || 'Sin asignar')}</span></div>`).join('');
+        buglist = `<div class="buglist" id="${blId}" hidden>${brows}</div>`;
+      }
+      return `<li><a href="${jiraBase}/browse/${esc(it.key)}">${esc(it.key)}</a><span class="sm">${esc(it.summary || '')}</span>${badge}<span class="asg">${it.assignee ? esc(it.assignee) : 'Sin asignar'}</span>${buglist}</li>`;
+    }).join('')
     : '<li class="empty">Sin historias en esta etapa.</li>';
   const head = `<tr class="etapa" role="button" tabindex="0" aria-expanded="false" aria-controls="${detId}" data-det="${detId}">` +
     `<td><span class="st"><span class="dot" style="background:${b.color}"></span>${esc(b.name)}<i class="chev" aria-hidden="true">▸</i></span></td>` +
@@ -232,10 +238,20 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
   .ilist li.empty{color:var(--faint);font-style:italic;background:transparent}
   .ilist a{font-family:var(--font-mono);font-weight:600;color:var(--accent);text-decoration:none;flex:none}
   .ilist .sm{color:var(--muted);flex:1 1 40%;min-width:0}
-  .ilist .bugs{flex:none;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:transparent}
+  .ilist .bugs{flex:none;font-family:inherit;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;background:transparent;cursor:pointer}
+  .ilist .bugs::after{content:" ▸";color:inherit;opacity:.7}
+  .ilist .bugs[aria-expanded="true"]::after{content:" ▾"}
   .ilist .bugs.open{color:var(--risk);border:1px solid var(--risk)}
   .ilist .bugs.done{color:var(--faint);border:1px solid var(--border)}
   .ilist .asg{flex:none;color:var(--ink);font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
+  .buglist{flex-basis:100%;order:9;width:100%;margin-top:6px;display:grid;gap:4px}
+  .bug{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;padding:5px 8px 5px 12px;border-left:2px solid var(--border)}
+  .bug a{font-family:var(--font-mono);font-weight:600;color:var(--accent);text-decoration:none;flex:none}
+  .bug .bst{flex:none;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px}
+  .bug .bst.open{color:var(--risk);border:1px solid var(--risk)}
+  .bug .bst.done{color:var(--faint);border:1px solid var(--border)}
+  .bug .bsm{flex:1 1 40%;min-width:0;color:var(--muted)}
+  .bug .basg{flex:none;color:var(--ink);font-size:11px;font-weight:500;padding:1px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
   .hint{font-size:12.5px;color:var(--faint);margin:8px 0 0}
   .scen{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:640px){.scen{grid-template-columns:1fr}}
@@ -305,12 +321,12 @@ ${projBlock}${findingBlock}${risksBlock}
 </div>
 <script>
 (function(){
-  function toggle(row){
-    var det=document.getElementById(row.getAttribute("aria-controls"));
-    if(!det)return;
-    var open=row.getAttribute("aria-expanded")==="true";
-    row.setAttribute("aria-expanded",String(!open));
-    det.hidden=open;
+  function toggle(el){
+    var t=document.getElementById(el.getAttribute("aria-controls"));
+    if(!t)return;
+    var open=el.getAttribute("aria-expanded")==="true";
+    el.setAttribute("aria-expanded",String(!open));
+    t.hidden=open;
   }
   var rows=document.querySelectorAll("tr.etapa");
   for(var i=0;i<rows.length;i++){
@@ -318,6 +334,10 @@ ${projBlock}${findingBlock}${risksBlock}
     rows[i].addEventListener("keydown",function(e){
       if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(this);}
     });
+  }
+  var bugs=document.querySelectorAll("button.bugs[aria-controls]");
+  for(var b=0;b<bugs.length;b++){
+    bugs[b].addEventListener("click",function(e){e.stopPropagation();toggle(this);});
   }
 })();
 </script>`;
