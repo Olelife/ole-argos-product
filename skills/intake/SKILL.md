@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
+description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "mostrame el avance/proyección de cierre de X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
 ---
 
 # /argos-product:intake — intake versionado
@@ -56,6 +56,18 @@ Disparadores: "subí el PRD v2.3", "hay nuevo Figma", "re-analizá X".
 Disparadores: "mostrame el intake X", "cómo va X".
 - `node "${CLAUDE_PLUGIN_ROOT}/scripts/dashboard-gen.mjs" <intakes/<slug>>` → escribe `dashboard.html`.
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
+
+### `avance` — tablero de avance y proyección de cierre (datos EN VIVO de Jira)
+Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X".
+Es distinto de `ver` (que resume el intake): `avance` lee el **estado real de las historias en Jira** y proyecta la fecha de cierre. Es una **foto del momento** — para refrescar, se vuelve a correr.
+1. **Config** (de `STATUS.md` frontmatter, con defaults): `jira_epics` (lista de épicas; sin esto no hay de dónde leer), `jira_goal_status` (meta = "última etapa"; default `Ready to Prod`), `jira_stage_order` (orden del flujo; default `["Tareas por hacer","En curso","Staging","Ready to Prod"]`). Si faltan, uso defaults y **aviso** cuáles asumí.
+2. **Snapshot en vivo** (MCP Atlassian): `searchJiraIssuesUsingJql` con `parent in (<jira_epics>)`, campos acotados (`key`, `status`). Si el resultado excede el límite de tokens, se guarda a archivo → extraigo con `jq` (`.issues.nodes[] | [.key,.fields.status.name]`). Excluyo las descartadas/`Finalizada` que no son alcance vivo.
+3. **Peso (opcional, degradación elegante)**: si Jira trae story points, o el intake tiene pesos por historia, los uso; **si no, modo conteo** (todas pesan igual). El script lo maneja: paso `weight` por historia solo si lo tengo.
+4. **Throughput / proyección**: consulto transiciones a la meta por ventanas — `parent in (…) AND status CHANGED TO "<meta>" AFTER "-Nd" BEFORE "-Md"` en `searchResultMode: count` (respuestas chicas). Con eso estimo el ritmo y armo escenarios (recomiendo el **realista**). **Si el histórico es anómalo** (p. ej. todo concentrado en pocos días por un bulk-update del board), lo reporto como **hallazgo** y NO invento una velocidad sostenida (regla: nunca certezas inventadas).
+5. **Genero**: escribo `input.json` (snapshot + config + escenarios + hallazgo + riesgos que redacto yo del análisis) y corro
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/avance-gen.mjs" "intakes/<slug>" <input.json>` → escribe `avance.html`. El script calcula (% DoD por conteo y por peso, ponderado por etapa, fechas de los escenarios) y renderiza; yo no hago la aritmética.
+6. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`avance_artifact_url`); en corridas siguientes **republico sobre esa MISMA URL** (paso `url`) para conservar el link que ya compartieron los stakeholders.
+7. **Nota honesta en el reporte**: el % oficial es el **DoD** (alcance en la meta); el ponderado es termómetro interno, no avance. El artefacto es una foto — si el usuario quiere "siempre al día", ofrezco agendarlo (schedule/loop) para re-correr el verbo.
 
 ### `aprobar` — cerrar el borrador y cortar historias
 Disparadores: "aprobá el intake X", "está listo X".
