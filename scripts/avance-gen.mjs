@@ -194,6 +194,7 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
     --ink:#0E1B20;--muted:#5A6C73;--faint:#8A9AA0;--accent:#0B8E96;--accent-soft:#DFF1F1;
     --staging-bg:#F7ECD8;--staging:#B0731A;--risk:#C63E29;}
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.6;-webkit-font-smoothing:antialiased}
   .wrap{max-width:920px;margin:0 auto;padding:clamp(20px,4vw,48px)}
   .tnum{font-variant-numeric:tabular-nums}
