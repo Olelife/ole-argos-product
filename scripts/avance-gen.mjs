@@ -10,7 +10,8 @@
 //   "project": "SO",
 //   "epics": ["SO-668","SO-790"],
 //   "stageOrder": ["Tareas por hacer","En curso","Staging","Ready to Prod"], // última = meta
-//   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3,"summary":"…","assignee":"…"}, ... ], // weight/summary/assignee opcionales
+//   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3,"summary":"…","assignee":"…",
+//               "bugs":{"total":6,"open":1,"openKeys":["SO-805"],"keys":["SO-802",…]}}, ... ], // bugs opcional (vínculos tipo Error)
 //   "jiraBase": "https://olelife.atlassian.net",  // opcional: base para los links de las historias
 //   "throughputRecentPerWeek": 10,         // opcional: ritmo reciente a la meta (hist/sem)
 //   "scenarios": [ {"name":"B · Realista","cond":"…","ratePerWeek":4.5,"best":true}, … ], // opcional
@@ -50,7 +51,7 @@ const idxOf = {}; stageOrder.forEach((s, i) => idxOf[s] = i);
 const buckets = stageOrder.map((name, i) => ({ name, i, color: stageColor(i, stageOrder.length), n: 0, pts: 0, items: [] }));
 const unmapped = { name: 'Sin mapear', color: '#C63E29', n: 0, pts: 0, keys: [], items: [] };
 for (const it of issues) {
-  const rec = { key: it.key || '', summary: it.summary || '', assignee: it.assignee || '', weight: w(it) };
+  const rec = { key: it.key || '', summary: it.summary || '', assignee: it.assignee || '', bugs: it.bugs || null, weight: w(it) };
   if (it.status in idxOf) { const b = buckets[idxOf[it.status]]; b.n++; b.pts += w(it); b.items.push(rec); }
   else { unmapped.n++; unmapped.pts += w(it); unmapped.keys.push(it.key); unmapped.items.push(rec); }
 }
@@ -101,8 +102,13 @@ const legend = buckets.concat(unmapped.n ? [unmapped] : []).map(b =>
   `<span class="lg"><span class="dot" style="background:${b.color}"></span>${esc(b.name)} <b>${b.n}</b></span>`).join('');
 const rows = buckets.concat(unmapped.n ? [unmapped] : []).map((b, bi) => {
   const detId = `det-${bi}`;
+  const bugBadge = it => {
+    const bg = it.bugs; if (!bg || !bg.total) return '';
+    if (bg.open > 0) return `<span class="bugs open" title="bugs sin resolver: ${esc((bg.openKeys || []).join(', '))}">${bg.open} bug${bg.open > 1 ? 's' : ''} abierto${bg.open > 1 ? 's' : ''}</span>`;
+    return `<span class="bugs done" title="bugs (resueltos): ${esc((bg.keys || []).join(', '))}">${bg.total} bug${bg.total > 1 ? 's' : ''} ✓</span>`;
+  };
   const items = b.items.length
-    ? b.items.map(it => `<li><a href="${jiraBase}/browse/${esc(it.key)}">${esc(it.key)}</a>${it.summary ? `<span class="sm">${esc(it.summary)}</span>` : '<span class="sm"></span>'}<span class="asg">${it.assignee ? esc(it.assignee) : 'Sin asignar'}</span></li>`).join('')
+    ? b.items.map(it => `<li><a href="${jiraBase}/browse/${esc(it.key)}">${esc(it.key)}</a><span class="sm">${esc(it.summary || '')}</span>${bugBadge(it)}<span class="asg">${it.assignee ? esc(it.assignee) : 'Sin asignar'}</span></li>`).join('')
     : '<li class="empty">Sin historias en esta etapa.</li>';
   const head = `<tr class="etapa" role="button" tabindex="0" aria-expanded="false" aria-controls="${detId}" data-det="${detId}">` +
     `<td><span class="st"><span class="dot" style="background:${b.color}"></span>${esc(b.name)}<i class="chev" aria-hidden="true">▸</i></span></td>` +
@@ -226,7 +232,10 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
   .ilist li.empty{color:var(--faint);font-style:italic;background:transparent}
   .ilist a{font-family:var(--font-mono);font-weight:600;color:var(--accent);text-decoration:none;flex:none}
   .ilist .sm{color:var(--muted);flex:1 1 40%;min-width:0}
-  .ilist .asg{flex:none;margin-left:auto;color:var(--ink);font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
+  .ilist .bugs{flex:none;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:transparent}
+  .ilist .bugs.open{color:var(--risk);border:1px solid var(--risk)}
+  .ilist .bugs.done{color:var(--faint);border:1px solid var(--border)}
+  .ilist .asg{flex:none;color:var(--ink);font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
   .hint{font-size:12.5px;color:var(--faint);margin:8px 0 0}
   .scen{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:640px){.scen{grid-template-columns:1fr}}
