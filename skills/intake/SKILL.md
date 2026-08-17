@@ -58,16 +58,55 @@ Disparadores: "mostrame el intake X", "cómo va X".
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
 
 ### `avance` — tablero de avance y proyección de cierre (datos EN VIVO de Jira)
-Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X".
+Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X", "actualizar avance".
 Es distinto de `ver` (que resume el intake): `avance` lee el **estado real de las historias en Jira** y proyecta la fecha de cierre. Es una **foto del momento** — para refrescar, se vuelve a correr.
+
+> ⚠️ **Regla base del snapshot: nada se hereda del corte anterior.** Cada `actualizar avance` re-consulta historias + bugs enlazados + assignees desde Jira. Los diffs se calculan **al final** (para el `finding`), no al principio (para "solo tocar lo que cambió"). Esta regla salió de una sesión donde el agente heredó assignees `"Sin asignar"` hardcodeados, dejó estados de bugs stale, y trackeó 9 bugs cuando en Jira había 25 (por no consultar `issuelinks`). Todos los pasos de abajo asumen frescura por corte.
+
 1. **Config** (de `STATUS.md` frontmatter, con defaults): `jira_epics` (lista de épicas; sin esto no hay de dónde leer), `jira_goal_status` (meta = "última etapa"; default `Ready to Prod`), `jira_stage_order` (orden del flujo; default `["Tareas por hacer","En curso","Staging","Ready to Prod"]`). Si faltan, uso defaults y **aviso** cuáles asumí.
-2. **Snapshot en vivo** (MCP Atlassian): `searchJiraIssuesUsingJql` con `parent in (<jira_epics>)`, campos acotados (`key`, `status`). Si el resultado excede el límite de tokens, se guarda a archivo → extraigo con `jq` (`.issues.nodes[] | [.key,.fields.status.name]`). Excluyo las descartadas/`Finalizada` que no son alcance vivo.
-3. **Peso (opcional, degradación elegante)**: si Jira trae story points, o el intake tiene pesos por historia, los uso; **si no, modo conteo** (todas pesan igual). El script lo maneja: paso `weight` por historia solo si lo tengo.
-4. **Throughput / proyección**: consulto transiciones a la meta por ventanas — `parent in (…) AND status CHANGED TO "<meta>" AFTER "-Nd" BEFORE "-Md"` en `searchResultMode: count` (respuestas chicas). Con eso estimo el ritmo y armo escenarios (recomiendo el **realista**). **Si el histórico es anómalo** (p. ej. todo concentrado en pocos días por un bulk-update del board), lo reporto como **hallazgo** y NO invento una velocidad sostenida (regla: nunca certezas inventadas).
-5. **Genero**: escribo `input.json` (snapshot + config + escenarios + hallazgo + riesgos que redacto yo del análisis) y corro
+2. **Snapshot de historias** (MCP Atlassian): `searchJiraIssuesUsingJql` con `parent in (<jira_epics>)` (o `"Epic Link" = <EPICA>` si el proyecto usa el legacy custom field), **campos `["key","status","assignee","summary"]`** — el `assignee` es obligatorio, no opcional. Si el resultado excede el límite de tokens del harness, el MCP vuelca a `.../tool-results/<hash>.txt` → extraigo con:
+   ```bash
+   jq -r '.issues.nodes[] | [.key, .fields.status.name, (.fields.assignee.displayName // "Sin asignar"), .fields.summary] | @tsv' <path> | sort
+   ```
+   No re-preguntar a Jira. Excluyo las descartadas/`Finalizada` que no son alcance vivo.
+3. **Bugs enlazados por historia — usar `issuelinks`, NO solo children.** Un bug puede estar vinculado por relación (`is caused by`, `blocks`, `relates to`, etc.) sin ser sub-tarea. Confiar solo en el árbol padre/hijo subestima el backlog real. Para cada historia:
+   - `getJiraIssue issueIdOrKey=<STORY> fields=["issuelinks"]`, o
+   - JQL: `issue in linkedIssues(<STORY>) AND issuetype = Error`.
+   Consolido la lista de todos los keys de bugs (deduplicada) para el paso siguiente.
+4. **Estado + assignee de bugs (batch fresco)**: un solo JQL con todas las keys:
+   ```
+   key in (<todos-los-bug-keys>)   fields=["key","status","assignee"]
+   ```
+   Alimenta `bugs.items[].status` y `bugs.items[].assignee` **desde Jira, nunca desde el snapshot previo**.
+5. **Regla `open` según `status`** — determinístico, tabla obligatoria:
+
+   | status           | open   | Notas |
+   |------------------|--------|-------|
+   | Tareas por hacer | `true`  | Backlog |
+   | En curso         | `true`  | Backlog |
+   | Staging          | `true`  | Sigue con deuda de QA |
+   | Ready to Prod    | `false` | Cerrado en la meta |
+   | Desestimado      | `false` | Descartado por Producto — no cuenta como deuda |
+
+   Recomputar `bugs.open` y `bugs.openKeys` **desde `items[]`** (nunca copiar del snapshot previo):
+   ```jq
+   .bugs.open = (.bugs.items | map(select(.open)) | length)
+   | .bugs.openKeys = (.bugs.items | map(select(.open)) | map(.key))
+   ```
+6. **Peso (opcional, degradación elegante)**: si Jira trae story points, o el intake tiene pesos por historia, los uso; **si no, modo conteo** (todas pesan igual). El script lo maneja: paso `weight` por historia solo si lo tengo.
+7. **Throughput / proyección**: consulto transiciones a la meta por ventanas — `parent in (…) AND status CHANGED TO "<meta>" AFTER "-Nd" BEFORE "-Md"` en `searchResultMode: count` (respuestas chicas). Con eso estimo el ritmo y armo escenarios (recomiendo el **realista**). **Si el histórico es anómalo** (p. ej. todo concentrado en pocos días por un bulk-update del board), lo reporto como **hallazgo** y NO invento una velocidad sostenida (regla: nunca certezas inventadas).
+8. **`finding` con diff explícito**: antes de escribirlo, comparo snapshot nuevo vs viejo y cito cada cambio: historias movidas (`S<n> (SO-xxx): <viejo> → <nuevo>`), bugs cerrados/desestimados por key, reasignaciones (`SO-xxx: <viejo> → <nuevo>`), bugs nuevos aparecidos en `issuelinks`. El `finding.title` captura el cambio más significativo del corte, no un resumen general.
+9. **Genero**: escribo `input.json` (snapshot + config + escenarios + hallazgo + riesgos que redacto yo del análisis) y corro
    `node "${CLAUDE_PLUGIN_ROOT}/scripts/avance-gen.mjs" "intakes/<slug>" <input.json>` → escribe `avance.html`. El script calcula (% DoD por conteo y por peso, ponderado por etapa, fechas de los escenarios) y renderiza; yo no hago la aritmética.
-6. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`avance_artifact_url`); en corridas siguientes **republico sobre esa MISMA URL** (paso `url`) para conservar el link que ya compartieron los stakeholders.
-7. **Nota honesta en el reporte**: el % oficial es el **DoD** (alcance en la meta); el ponderado es termómetro interno, no avance. El artefacto es una foto — si el usuario quiere "siempre al día", ofrezco agendarlo (schedule/loop) para re-correr el verbo.
+10. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`avance_artifact_url`); en corridas siguientes **republico sobre esa MISMA URL** (paso `url`) para conservar el link que ya compartieron los stakeholders.
+11. **Nota honesta en el reporte**: el % oficial es el **DoD** (alcance en la meta); el ponderado es termómetro interno, no avance. El artefacto es una foto — si el usuario quiere "siempre al día", ofrezco agendarlo (schedule/loop) para re-correr el verbo.
+
+**Anti-patrones prohibidos:**
+- ❌ Asumir "los bugs no cambiaron desde ayer" (son el 80% del movimiento entre cortes).
+- ❌ Hardcodear `"Sin asignar"` con la idea de "después lo lleno" — nunca se llena.
+- ❌ Mirar solo sub-tasks/children de la historia — perdés los bugs vinculados por relación.
+- ❌ Tratar `"Desestimado"` como estado desconocido — es un cierre válido y va `open: false`.
+- ❌ Cachear el `input.json` previo y solo tocar lo que "me acuerdo que cambió".
 
 ### `aprobar` — cerrar el borrador y cortar historias
 Disparadores: "aprobá el intake X", "está listo X".

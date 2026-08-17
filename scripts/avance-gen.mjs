@@ -10,14 +10,30 @@
 //   "project": "SO",
 //   "epics": ["SO-668","SO-790"],
 //   "stageOrder": ["Tareas por hacer","En curso","Staging","Ready to Prod"], // última = meta
-//   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3,"summary":"…","assignee":"…",
-//               "bugs":{"total":6,"open":1,"openKeys":["SO-805"],"keys":["SO-802",…]}}, ... ], // bugs opcional (vínculos tipo Error)
+//   "issues": [ {
+//     "key":"SO-672", "status":"Ready to Prod", "weight":3, "summary":"…",
+//     "assignee":"Alexander Cerna",     // OBLIGATORIO — desde Jira, nunca "Sin asignar" hardcodeado
+//     "bugs": {                          // opcional (vínculos por issuelinks — is caused by / blocks / relates to — NO solo children)
+//       "total": 6, "open": 1, "openKeys": ["SO-805"], "keys": ["SO-802",…],
+//       "items": [                       // detalle para expandir; open/openKeys se DERIVAN de aquí, no se copian del snapshot previo
+//         {"key":"SO-802", "open": false, "status":"Ready to Prod",  "summary":"…", "assignee":"Miguel Navarro"},
+//         {"key":"SO-805", "open": true,  "status":"Staging",         "summary":"…", "assignee":"Ana Roncal"},
+//         {"key":"SO-807", "open": false, "status":"Desestimado",     "summary":"…", "assignee":"Alexander Cerna"}
+//       ]
+//     }
+//   }, ... ],
 //   "jiraBase": "https://olelife.atlassian.net",  // opcional: base para los links de las historias
 //   "throughputRecentPerWeek": 10,         // opcional: ritmo reciente a la meta (hist/sem)
 //   "scenarios": [ {"name":"B · Realista","cond":"…","ratePerWeek":4.5,"best":true}, … ], // opcional
 //   "finding": {"title":"…","body":"…","stats":[{"k":"→ Staging 14d","v":"37"}, …]},      // opcional
 //   "risks": [ {"tag":"Validación","title":"…","detail":"…"}, … ]                          // opcional
 // }
+//
+// Regla de `open` (aplica a items[]):
+//   status "Ready to Prod" → open:false (cerrado en la meta)
+//   status "Desestimado"   → open:false (descartado por Producto — no cuenta como deuda)
+//   cualquier otro         → open:true  (backlog o Staging con deuda de QA)
+// El agente NUNCA hereda assignee/status/open del snapshot anterior — cada corte re-consulta a Jira.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { readMaybe, parseFrontmatter, esc } from './lib/md.mjs';
