@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "mostrame el avance/proyección de cierre de X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
+description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "mostrame el avance/proyección de cierre de X", "generá el roadmap del intake X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
 ---
 
 # /argos-product:intake — intake versionado
@@ -56,6 +56,18 @@ Disparadores: "subí el PRD v2.3", "hay nuevo Figma", "re-analizá X".
 Disparadores: "mostrame el intake X", "cómo va X".
 - `node "${CLAUDE_PLUGIN_ROOT}/scripts/dashboard-gen.mjs" <intakes/<slug>>` → escribe `dashboard.html`.
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
+
+### `roadmap` — entregable visual del plan de ejecución (RFC-002)
+Disparadores: "generá el roadmap del intake X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
+Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia. Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
+1. **Prerequisito**: el `stories.md` debe tener la sección `## Orden de ejecución · roadmap por fase` con un H3 por fase y una tabla `Historia | Título | Ready?`. Si falta, el script genera igual el HTML **con un banner de warning** que guía a pegar `templates/stories-roadmap-section.md` del motor.
+2. **Datos que consume** (todos del intake, sin Jira ni servicios externos):
+   - `STATUS.md` frontmatter → título del intake.
+   - `stories.md` → tabla índice de historias + sección "Orden de ejecución".
+   - `decision-log.md` → dudas con estado `abierta`, cruzadas con las historias por menciones `SXX` en el cuerpo. Las que matchean se muestran como flag `🚧 #NN` en la tarjeta y en el modal.
+3. **Genero**: `node "${CLAUDE_PLUGIN_ROOT}/scripts/roadmap-gen.mjs" <intakes/<slug>>` → escribe `roadmap-mvp.html`. Self-contained + theme-aware (mismo patrón que `dashboard.html`).
+4. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`roadmap_artifact_url`); en corridas siguientes republico sobre esa MISMA URL (paso `url`) para conservar el link ya compartido.
+5. **Cuándo se re-corre**: al cerrar dudas grandes, al agregar/mover historias entre fases, o al cambiar el orden del plan. El HTML es regenerable — nunca se edita a mano.
 
 ### `avance` — tablero de avance y proyección de cierre (datos EN VIVO de Jira)
 Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X".
