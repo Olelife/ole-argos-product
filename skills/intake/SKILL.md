@@ -85,6 +85,10 @@ Es distinto de `ver` (que resume el intake): `avance` lee el **estado real de la
 Disparadores: "aprobá el intake X", "está listo X".
 1. Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" intakes/<slug>/PRD-<slug>.md` — no apruebo con obligatorios en hueco ni alcance sin acotar ni dudas `abierta` que cambien alcance.
 2. **Genero el gate** `intakes/<slug>/jira-preview.md` desde `${CLAUDE_PLUGIN_ROOT}/templates/jira-preview.md`, poblándolo con las historias del PRD §6 (título, descripción Como/Quiero/Para + criterios) y los **links de Figma** (mapeo frame→node-id de `figma/vN/structure.json`). El dev revisa/edita ese archivo — **es la fuente desde la que se crea**.
+   **Formato obligatorio de cada historia** (aplica también al MCP al crear):
+   - **Links de Figma completos** — nunca cito solo el `node-id`. Cada frame va como URL completa clickeable = **URL base del archivo** (de `figma_url.*` en `STATUS.md`) + `?node-id=<node-id-con-guiones>` (los `:` del id se reemplazan por `-`). Markdown: `- [Nombre del frame](<url-completa>)`.
+   - **Sin sección "Trazabilidad".** El estado Ready?, la fase, el intake y las dudas ya viajan en los **labels** (`ready:*`, `phase:*`, `intake:*`, `blocked-by:#NN`). No los repito en el cuerpo. Las dudas activas se mencionan inline solo cuando aportan contexto.
+   - **Diagrama de secuencia embebido cuando existe.** Para cada historia `Sxx`, si existe `intakes/<slug>/analysis/stories/<sid>.mmd`, embebo su contenido en un bloque ```` ```mermaid ```` en la descripción (Jira renderiza Mermaid nativo). Si el archivo no existe, **omito toda la sección** — no dejo placeholder ni "pendiente".
 3. **STATUS** = `ready`. Congelo la versión del PRD/Figma.
 4. **Handoff a Jira — con GATE + IDEMPOTENCIA.** Espero tu **confirmación explícita** antes de crear nada. La escritura usa el **MCP de Atlassian**; si no está disponible en el runtime, **no invento**: dejo `jira-preview.md` como fallback listo para pegar (ver [[atlassian-mcp-runtime-vs-cli]]). Nunca creo en masa sin tu OK.
 
