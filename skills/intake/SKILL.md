@@ -90,10 +90,16 @@ Disparadores: "aprobá el intake X", "está listo X".
    - **Sin sección "Trazabilidad".** El estado Ready?, la fase, el intake y las dudas ya viajan en los **labels** (`ready:*`, `phase:*`, `intake:*`, `blocked-by:#NN`). No los repito en el cuerpo. Las dudas activas se mencionan inline solo cuando aportan contexto.
    - **Diagrama de secuencia embebido cuando existe.** Para cada historia `Sxx`, si existe `intakes/<slug>/analysis/stories/<sid>.mmd`, embebo su contenido en un bloque ```` ```mermaid ```` en la descripción (Jira renderiza Mermaid nativo). Si el archivo no existe, **omito toda la sección** — no dejo placeholder ni "pendiente".
 
+   **Contenido de la ÉPICA (reglas obligatorias):**
+   - **`## Objetivo` en lenguaje de negocio, no técnico.** Describo el *por qué* del proyecto y el *valor para la organización* para cualquier stakeholder (retención, auditoría, escalabilidad, reducción de fricción). **No** menciono repos, endpoints, componentes, servicios, códigos de historia (Sxx) ni jerga técnica interna. Si necesito bullets, van con formato `**<beneficio>** — <explicación breve>`.
+   - **`## Alcance` describe capacidades funcionales, no artefactos técnicos.** Enuncio qué puede hacer el usuario final o el negocio. **No** enumero historias por código, rutas de archivo o keys de Jira — eso vive en `stories.md` y en el backlog de la épica. Incluyo un bullet **"Quedan fuera de alcance"** con las decisiones deliberadas de recorte.
+   - **`## Convenciones para Dev` empieza siempre con el link al Roadmap interactivo del initiative** si existe. Fuente: `STATUS.md` frontmatter `roadmap_artifact_url:` (el verbo `roadmap` lo escribe al publicar). Formato: `- **Roadmap interactivo del initiative** — <descripción breve>. **Link vigente:** [<Nombre>](<url>).`. Si no hay URL en el STATUS, **omito** el bullet — no invento ni pongo placeholder.
+   - **No incluyo sección "Estado del bump v<N>"** ni bitácora de versiones del PRD. Esa historia vive en `decision-log.md`; alcanza con referenciarlo desde `## Fuentes`.
+
    **Sección `## Base técnica` en la ÉPICA (opcional · solo cuando el initiative tiene rama de integración propia):**
    - Se agrega **solo en la descripción de la épica**, nunca en cada historia — las historias hijas heredan la base al abrir su spec.
    - Aplica cuando el intake trabaja sobre una **rama base distinta de la default del repo** (ej. `petra/policies`, `mobile/v2`) — típicamente un initiative multi-RQ que se integra antes de bajar a `develop`/`staging`.
-   - Campos: **Rama base** (nombre + destino del PR + criterio de merge a la default) · **Entorno de deploy inicial** (INT / staging-mx / staging-br · regla de promoción) · **Repos afectados** (referencia — el `/argos:spec` de cada RQ los confirma).
+   - Campos: **Rama base** (nombre + destino del PR + criterio de merge a la default) · **Entorno de deploy inicial** (INT / staging-mx / staging-br · regla de promoción). **Repos afectados NO van acá** — los define el `/argos:spec` de cada RQ.
    - Si el intake usa la default del repo (methodology §4: INT→`develop`, MX/BR→`staging`), **omito** la sección — no dejo placeholder.
    - Fuente de verdad para el valor: `STATUS.md` frontmatter (campos opcionales `base_branch:` y `deploy_env:`). Si no están en el STATUS, pregunto al usuario antes de emitir; no invento.
 
