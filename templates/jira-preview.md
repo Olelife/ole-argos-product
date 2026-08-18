@@ -28,13 +28,19 @@ Si ya existe por cualquiera, **no se crea**: se reutiliza el key. Mandar dos vec
 ## ÉPICA — EP-<SLUG>
 - **Tipo:** Epic · **Label único:** `intake-<slug>-epic`
 - **Summary:** `[<Producto>] <título de la épica>`
-- **Descripción:** <objetivo de la épica; base PRD + Figma>
 
-  **Secciones estándar de la épica (en este orden):** Objetivo · Alcance · **Base técnica** (ver abajo) · Fuentes · Convenciones para Dev · Trazabilidad.
+  **Secciones estándar de la épica (en este orden):** Objetivo · Alcance · **Base técnica** (opcional, ver abajo) · Fuentes · Convenciones para Dev · Trazabilidad.
 
-  **Sección `## Base técnica` (opcional · aplica cuando el initiative usa una rama de integración distinta de la default):**
+  ### Reglas de contenido de la épica (obligatorias)
 
-  Se agrega **solo en la épica** — nunca se repite en cada historia. La consumen todos los `/argos:spec` de las historias hijas para saber de dónde arrancar. Formato:
+  1. **`## Objetivo` es de negocio, no técnico.** Describe el *por qué* del proyecto y el *valor para la organización* en lenguaje que entiende cualquier stakeholder (retención, auditoría, escalabilidad, reducción de fricción). **Prohibido** mencionar repos, endpoints, componentes, servicios, códigos de historia (Sxx) o cualquier jerga técnica interna. Si necesitás enunciar el valor, hacelo con bullets `**<beneficio>** — <explicación breve>`.
+  2. **`## Alcance` describe capacidades funcionales, no artefactos técnicos.** Enunciá qué puede hacer el usuario final o el negocio (ej. "consulta de cartera", "9 tipos de cambio agrupados por impacto en prima", "landing pública de aceptación de oferta"). **Prohibido** enumerar historias por código (`S1`, `S2b`, `S13a/b`), rutas de archivo, nombres de servicios o keys de Jira — eso vive en el intake (`stories.md`) y en el propio backlog de la épica en Jira. Incluí un bullet **"Quedan fuera de alcance"** con las decisiones deliberadas de recorte.
+  3. **`## Convenciones para Dev` empieza siempre con el link al Roadmap interactivo del initiative** (si existe · Artifact publicado del entregable `roadmap-mvp.html` del intake). Ese link es la puerta de entrada de Dev al abrir un spec — le muestra fases, dependencias y secuencia sugerida. Formato: `**Roadmap interactivo del initiative** — <descripción breve>. **Link vigente:** [<Nombre>](<url>).`. Si el intake aún no tiene roadmap publicado, se omite este bullet (no dejar placeholder).
+  4. **No sección "Estado del bump"** ni bitácora de versiones del PRD en la épica. Ese historial vive en el `decision-log.md` del intake — referenciarlo desde la sección `## Fuentes` alcanza. La épica muestra el estado vigente, no la evolución.
+
+  ### Sección `## Base técnica` (opcional · solo cuando aplica)
+
+  Se agrega **solo en la épica** — nunca se repite en cada historia. La consumen todos los `/argos:spec` de las historias hijas para saber de dónde arrancar. Aplica cuando el initiative usa una **rama base distinta de la default del repo** (ej. `petra/policies`, `mobile/v2`); si usa la default (methodology §4: INT→`develop`, MX/BR→`staging`), la sección se **omite** — no se pone placeholder ni "usa la default". Formato:
 
   ```markdown
   ## Base técnica (aplica a todas las historias del initiative)
@@ -44,12 +50,9 @@ Si ya existe por cualquiera, **no se crea**: se reutiliza el key. Mandar dos vec
       - El merge de `<rama>` → `develop` se coordina al cierre del initiative (o por hitos de fase).
   - **Entorno de deploy inicial:** **<INT | staging-mx | staging-br | ...>**.
       - <regla de promoción entre entornos si aplica>.
-  - **Repos afectados** (referencia — el spec de cada RQ los confirma):
-      - Frontend: `<repo>` · ...
-      - Backend: `<repo>` · ...
   ```
 
-  Si el initiative usa la rama base default del repo (`develop` INT / `staging` MX/BR según methodology §4), la sección se **omite** — no se pone placeholder ni "usa la default".
+  **Repos afectados** no van acá — los define el `/argos:spec` de cada RQ según lo que efectivamente toque, y viven en el spec del RQ (no en la épica).
 
 ---
 
