@@ -89,6 +89,14 @@ Disparadores: "aprobá el intake X", "está listo X".
    - **Links de Figma completos** — nunca cito solo el `node-id`. Cada frame va como URL completa clickeable = **URL base del archivo** (de `figma_url.*` en `STATUS.md`) + `?node-id=<node-id-con-guiones>` (los `:` del id se reemplazan por `-`). Markdown: `- [Nombre del frame](<url-completa>)`.
    - **Sin sección "Trazabilidad".** El estado Ready?, la fase, el intake y las dudas ya viajan en los **labels** (`ready:*`, `phase:*`, `intake:*`, `blocked-by:#NN`). No los repito en el cuerpo. Las dudas activas se mencionan inline solo cuando aportan contexto.
    - **Diagrama de secuencia embebido cuando existe.** Para cada historia `Sxx`, si existe `intakes/<slug>/analysis/stories/<sid>.mmd`, embebo su contenido en un bloque ```` ```mermaid ```` en la descripción (Jira renderiza Mermaid nativo). Si el archivo no existe, **omito toda la sección** — no dejo placeholder ni "pendiente".
+
+   **Sección `## Base técnica` en la ÉPICA (opcional · solo cuando el initiative tiene rama de integración propia):**
+   - Se agrega **solo en la descripción de la épica**, nunca en cada historia — las historias hijas heredan la base al abrir su spec.
+   - Aplica cuando el intake trabaja sobre una **rama base distinta de la default del repo** (ej. `petra/policies`, `mobile/v2`) — típicamente un initiative multi-RQ que se integra antes de bajar a `develop`/`staging`.
+   - Campos: **Rama base** (nombre + destino del PR + criterio de merge a la default) · **Entorno de deploy inicial** (INT / staging-mx / staging-br · regla de promoción) · **Repos afectados** (referencia — el `/argos:spec` de cada RQ los confirma).
+   - Si el intake usa la default del repo (methodology §4: INT→`develop`, MX/BR→`staging`), **omito** la sección — no dejo placeholder.
+   - Fuente de verdad para el valor: `STATUS.md` frontmatter (campos opcionales `base_branch:` y `deploy_env:`). Si no están en el STATUS, pregunto al usuario antes de emitir; no invento.
+
 3. **STATUS** = `ready`. Congelo la versión del PRD/Figma.
 4. **Handoff a Jira — con GATE + IDEMPOTENCIA.** Espero tu **confirmación explícita** antes de crear nada. La escritura usa el **MCP de Atlassian**; si no está disponible en el runtime, **no invento**: dejo `jira-preview.md` como fallback listo para pegar (ver [[atlassian-mcp-runtime-vs-cli]]). Nunca creo en masa sin tu OK.
 

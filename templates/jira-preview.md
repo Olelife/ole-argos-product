@@ -30,6 +30,27 @@ Si ya existe por cualquiera, **no se crea**: se reutiliza el key. Mandar dos vec
 - **Summary:** `[<Producto>] <título de la épica>`
 - **Descripción:** <objetivo de la épica; base PRD + Figma>
 
+  **Secciones estándar de la épica (en este orden):** Objetivo · Alcance · **Base técnica** (ver abajo) · Fuentes · Convenciones para Dev · Trazabilidad.
+
+  **Sección `## Base técnica` (opcional · aplica cuando el initiative usa una rama de integración distinta de la default):**
+
+  Se agrega **solo en la épica** — nunca se repite en cada historia. La consumen todos los `/argos:spec` de las historias hijas para saber de dónde arrancar. Formato:
+
+  ```markdown
+  ## Base técnica (aplica a todas las historias del initiative)
+
+  - **Rama base:** `<rama>` — <por qué existe · ej. "rama de integración del initiative X donde caen todos los RQs antes de mergear a develop">.
+      - Cada historia sale de `<rama>` y su PR vuelve a `<rama>` (no a `develop`).
+      - El merge de `<rama>` → `develop` se coordina al cierre del initiative (o por hitos de fase).
+  - **Entorno de deploy inicial:** **<INT | staging-mx | staging-br | ...>**.
+      - <regla de promoción entre entornos si aplica>.
+  - **Repos afectados** (referencia — el spec de cada RQ los confirma):
+      - Frontend: `<repo>` · ...
+      - Backend: `<repo>` · ...
+  ```
+
+  Si el initiative usa la rama base default del repo (`develop` INT / `staging` MX/BR según methodology §4), la sección se **omite** — no se pone placeholder ni "usa la default".
+
 ---
 
 ## S1 — <título>
