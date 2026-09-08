@@ -1,0 +1,79 @@
+name: rag-sync
+
+# Sincroniza el corpus de este repo hacia el bucket S3 del RAG de Bedrock KB.
+# Copiar tal cual en:
+#   ole-argos-brain/.github/workflows/rag-sync.yml
+#   ole-argos-product-data/.github/workflows/rag-sync.yml
+#
+# Secrets/variables que deben existir en el repo (Settings → Secrets and vars):
+#   RAG_AWS_ROLE_ARN     · IAM role assumido vía OIDC (arn:aws:iam::<acct>:role/<name>)
+#   RAG_S3_BUCKET        · nombre del bucket (ej. olelife-argos-corpus)
+#   RAG_S3_PREFIX        · prefijo por repo (ej. brain o product)
+#   RAG_KB_ID            · <knowledgeBaseId>:<dataSourceId>  (opcional; sin esto no se
+#                           dispara ingestion job, solo se sube a S3)
+#   RAG_MOTOR_TAG        · versión pineada del motor argos-product (ej. v1.13.0)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: rag-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # para OIDC → aws-actions/configure-aws-credentials
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # rag-sync.mjs usa git log para SHA + last-updated
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch argos-product motor (tag pineado)
+        uses: actions/checkout@v4
+        with:
+          repository: Olelife/ole-argos-product
+          ref: ${{ vars.RAG_MOTOR_TAG || 'v1.13.0' }}
+          path: .argos-product
+          token: ${{ secrets.RAG_MOTOR_TOKEN || github.token }}
+
+      - name: Install AWS SDK v3
+        working-directory: .argos-product/scripts
+        run: |
+          npm init -y >/dev/null
+          npm install @aws-sdk/client-s3 @aws-sdk/client-bedrock-agent --no-save --silent
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.RAG_AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Dry-run manifest (siempre)
+        run: |
+          node .argos-product/scripts/rag-sync.mjs . --dry-run > /tmp/manifest.json || true
+          node -e "const m=require('/tmp/manifest.json'); console.log('kept:',m.summary.counts.kept,'skipped:',m.summary.counts.skipped,'secretsBlocked:',m.summary.counts.secretsBlocked); if(m.summary.counts.secretsBlocked){process.exit(3)}"
+
+      - name: Upload to S3 + trigger ingestion
+        run: |
+          node .argos-product/scripts/rag-sync.mjs . \
+            --to s3://${{ secrets.RAG_S3_BUCKET }}/${{ secrets.RAG_S3_PREFIX }} \
+            ${{ secrets.RAG_KB_ID && format('--kb-id {0}', secrets.RAG_KB_ID) || '' }}
+
+      - name: Upload manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-sync-manifest-${{ github.sha }}
+          path: /tmp/manifest.json
+          retention-days: 30
