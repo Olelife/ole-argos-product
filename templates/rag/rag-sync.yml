@@ -7,7 +7,7 @@ name: rag-sync
 #
 # Secrets/variables que deben existir en el repo (Settings → Secrets and vars):
 #   RAG_AWS_ROLE_ARN     · IAM role assumido vía OIDC (arn:aws:iam::<acct>:role/<name>)
-#   RAG_S3_BUCKET        · nombre del bucket (ej. olelife-argos-corpus)
+#   RAG_S3_BUCKET        · nombre del bucket (ej. olelife-pilot-corpus)
 #   RAG_S3_PREFIX        · prefijo por repo (ej. brain o product)
 #   RAG_KB_ID            · <knowledgeBaseId>:<dataSourceId>  (opcional; sin esto no se
 #                           dispara ingestion job, solo se sube a S3)

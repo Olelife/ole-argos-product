@@ -25,7 +25,7 @@ Bedrock es solo un índice de búsqueda. Persona y reglas: `CONSTITUTION.md`.
 Config esperada en env (Parameter Store o `.env` local):
 ```
 RAG_KB_ID          <knowledgeBaseId>:<dataSourceId>   (Bedrock KB)
-RAG_S3_BUCKET      olelife-argos-corpus                (mirror)
+RAG_S3_BUCKET      olelife-pilot-corpus                (mirror)
 RAG_AWS_REGION     us-east-1                           (default)
 RAG_MODEL_ID       anthropic.claude-3-5-sonnet-20241022-v2:0  (generación)
 ```

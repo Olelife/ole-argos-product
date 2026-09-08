@@ -116,7 +116,7 @@ antes de probar.
 ### 2. Bucket S3
 
 ```
-Nombre sugerido: olelife-argos-corpus
+Nombre sugerido: olelife-pilot-corpus
 Versioning:      Enabled  (útil para trazar cambios y no perder MDs borrados)
 Encryption:      SSE-S3 (default) o SSE-KMS si compliance lo pide
 Lifecycle:       ninguna (el corpus es chico, ~30 MB con 20 intakes)
@@ -176,7 +176,7 @@ Consola AWS → Bedrock → Knowledge bases → **Create**:
 - **IAM role**: crear nuevo (o el wizard lo crea) con permisos S3 read + Bedrock invoke embeddings + acceso al Secret de la DB.
 - **Data source**:
   - Tipo: **S3**
-  - Bucket: `olelife-argos-corpus`
+  - Bucket: `olelife-pilot-corpus`
   - Prefix filter: sin filtro (indexa `brain/` y `product/` completos)
   - Chunking strategy: **Default** (300 tokens, 20% overlap) para el POC.
     Iterar a **Hierarchical** en Fase 2 si los PRDs largos se cortan feo.
@@ -200,8 +200,8 @@ Sin secrets long-lived. GitHub Actions asume un role vía OIDC:
 - IAM → **Roles** → Create: trust policy que permita `assume-role-with-web-identity` desde
   los repos `Olelife/ole-argos-brain` y `Olelife/ole-argos-product-data` (branch `main`).
 - Policy adjunta:
-  - `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` en `arn:aws:s3:::olelife-argos-corpus/*`
-  - `s3:ListBucket` en `arn:aws:s3:::olelife-argos-corpus`
+  - `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` en `arn:aws:s3:::olelife-pilot-corpus/*`
+  - `s3:ListBucket` en `arn:aws:s3:::olelife-pilot-corpus`
   - `bedrock:StartIngestionJob` en el KB creado.
 
 Anotar el ARN del role: `arn:aws:iam::<acct>:role/olelife-argos-rag-github-actions`.
@@ -224,7 +224,7 @@ Por cada repo:
 | Nombre                | Tipo    | Valor                                                          |
 | --------------------- | ------- | -------------------------------------------------------------- |
 | `RAG_AWS_ROLE_ARN`    | Secret  | `arn:aws:iam::<acct>:role/olelife-argos-rag-github-actions`     |
-| `RAG_S3_BUCKET`       | Secret  | `olelife-argos-corpus`                                          |
+| `RAG_S3_BUCKET`       | Secret  | `olelife-pilot-corpus`                                          |
 | `RAG_S3_PREFIX`       | Secret  | `brain` (en brain) · `product` (en product-data)                |
 | `RAG_KB_ID`           | Secret  | `<knowledgeBaseId>:<dataSourceId>`                              |
 | `RAG_MOTOR_TAG`       | Var     | `v1.13.0` (bump cuando saque nueva versión del motor)           |
