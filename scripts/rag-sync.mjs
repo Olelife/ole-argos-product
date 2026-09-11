@@ -203,15 +203,27 @@ async function uploadS3(kept, rootPath, s3Uri) {
   }
   const s3 = new S3Client({});
   let uploaded = 0;
+  // S3 user-defined metadata viaja como HTTP header — Node rechaza chars fuera
+  // de ASCII imprimible. Los valores del frontmatter pueden tener acentos, ñ,
+  // comillas curvas, etc. → escapamos con encodeURIComponent y quien lee
+  // decodea con decodeURIComponent. Truncamos a 200 chars para no romper el
+  // límite de 2 KB por header.
+  const safeHeader = (v) => {
+    const s = String(v ?? '');
+    const encoded = /^[\x20-\x7E]*$/.test(s) ? s : encodeURIComponent(s);
+    return encoded.slice(0, 200);
+  };
   for (const it of kept) {
     const key = prefix ? `${prefix}/${it.file}` : it.file;
     const body = await readFile(join(rootPath, it.file));
     const meta = Object.fromEntries(
-      Object.entries(it.metadata).filter(([, v]) => v != null).map(([k, v]) => [k.toLowerCase(), String(v)])
+      Object.entries(it.metadata)
+        .filter(([, v]) => v != null)
+        .map(([k, v]) => [k.toLowerCase(), safeHeader(v)])
     );
     await s3.send(new PutObjectCommand({
       Bucket: bucket, Key: key, Body: body,
-      Metadata: { ...meta, sha: it.sha, 'last-updated': it.lastUpdated },
+      Metadata: { ...meta, sha: safeHeader(it.sha), 'last-updated': safeHeader(it.lastUpdated) },
       ContentType: contentTypeFor(it.file),
     }));
     uploaded++;
