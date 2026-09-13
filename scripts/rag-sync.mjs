@@ -232,8 +232,10 @@ async function uploadS3(kept, rootPath, s3Uri) {
 }
 
 function contentTypeFor(f) {
-  if (f.endsWith('.md') || f.endsWith('.mmd')) return 'text/markdown';
-  if (f.endsWith('.json')) return 'application/json';
+  // charset=utf-8 explícito: Bedrock KB, si no lo ve, asume Latin-1 (RFC 2616) y
+  // re-encodea → doble UTF-8 en cada chunk retrieved (Módulo → MÃ³dulo).
+  if (f.endsWith('.md') || f.endsWith('.mmd')) return 'text/markdown; charset=utf-8';
+  if (f.endsWith('.json')) return 'application/json; charset=utf-8';
   if (f.endsWith('.pdf')) return 'application/pdf';
   return 'application/octet-stream';
 }
