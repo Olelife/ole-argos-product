@@ -65,6 +65,13 @@ Estado inicial · transiciones/estados · reglas de negocio · validaciones de e
 - Id estable por historia (`EP-<SLUG>-S<n>`) → en Dev, cada historia es **un RQ** (`based-on: EP-<SLUG>-S<n>`).
 - Así cada cosa liberada a producción mapea a una historia: no se pierde el control del alcance.
 
+## Caso especial: adaptación de mercado
+Llevar a otro país una capability que **ya existe** en un mercado tiene su propio standard:
+**`standards/prd-adaptacion-mercado.md`** (skill `/argos-product:prd-mercado`). Ahí la columna vertebral
+son los **casos de uso** y no las historias, las preguntas abiertas viven en un **anexo** en vez del
+cuerpo, y se agregan reglas numeradas, glosario y trazabilidad con el mercado origen. Donde ese
+documento diga algo distinto de éste, **manda el de adaptación**.
+
 ## Anti-patrones (rechazar)
 - PRD que describe la **solución técnica** en vez del comportamiento (eso lo decide Dev en `/argos:spec`).
 - Alcance difuso ("mejorar el flujo de pago") sin bordes.
