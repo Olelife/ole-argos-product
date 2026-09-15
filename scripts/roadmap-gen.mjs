@@ -5,6 +5,8 @@
 //   - STATUS.md   → título del intake (frontmatter)
 //   - stories.md  → tabla índice + sección "## Orden de ejecución · roadmap por fase"
 //   - decision-log.md → dudas abiertas para cruzar como bloqueos
+//   - analysis/stories/<sid>.mmd  → diagrama de secuencia opcional por historia
+//                                    (embebido en el modal · fase 2b del RFC-002)
 //
 // La fuente de verdad son los markdown. El HTML es presentación regenerable,
 // self-contained y theme-aware (funciona local + como Artifact).
@@ -12,7 +14,7 @@
 // Sigue el mismo patrón que dashboard-gen.mjs: todo el HTML se compone inline
 // con template literals, sin archivo template separado.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { readMaybe, parseFrontmatter, parseTable, esc } from './lib/md.mjs';
 
@@ -27,10 +29,18 @@ const fm = parseFrontmatter(status);
 const title = fm.title || basename(dir);
 
 // ── Índice global de historias (para el modal · descripción corta por historia)
+// La tabla índice del stories.md usa IDs con prefijo `EP-<SLUG>-Sxx`. Las cards del
+// roadmap y los archivos .mmd usan el sufijo corto `Sxx`. Normalizamos a la clave corta
+// para que el modal encuentre el payload al hacer click.
 const indexRows = parseTable(storiesMd, 'Historia');
 const storyIndex = new Map();
+const shortId = raw => {
+  const cleaned = String(raw || '').replace(/~~/g, '').trim();
+  const m = cleaned.match(/S\d+[a-z]?$/i);
+  return m ? m[0] : cleaned;
+};
 for (const r of indexRows) {
-  const id = (r[0] || '').trim();
+  const id = shortId(r[0]);
   if (!id) continue;
   storyIndex.set(id, { id, title: r[1] || '', ready: r[2] || '', jira: r[4] || '', rq: r[5] || '' });
 }
@@ -96,6 +106,24 @@ const phases = parsePhases(storiesMd);
 const dudas = openDudas(decisionMd);
 const dudasBloq = dudasByStory(dudas);
 
+// ── Diagramas por historia (fase 2b del RFC-002)
+// Convención: analysis/stories/<sid>.mmd — un Mermaid sequenceDiagram por historia,
+// escrito por Producto a nivel de negocio (actor + superficies + reglas · sin endpoints).
+// Nombres case-insensitive: s5.mmd, S5.mmd, s13b.mmd, S13a.mmd → todos válidos.
+function loadStoryDiagrams(intakeDir) {
+  const dir = join(intakeDir, 'analysis', 'stories');
+  if (!existsSync(dir)) return { map: new Map(), count: 0 };
+  const map = new Map();
+  for (const f of readdirSync(dir)) {
+    if (!/\.mmd$/i.test(f)) continue;
+    const sid = f.replace(/\.mmd$/i, '').toUpperCase();
+    map.set(sid, readMaybe(join(dir, f)).trim());
+  }
+  return { map, count: map.size };
+}
+
+const diagrams = loadStoryDiagrams(dir);
+
 // ── Build HTML
 
 const missingSection = phases === null;
@@ -131,6 +159,7 @@ const modalData = JSON.stringify(Object.fromEntries(
     jira: s.jira,
     rq: s.rq,
     dudas: (dudasBloq.get(id) || []).map(d => ({ id: d.id, text: d.text })),
+    diagram: diagrams.map.get(id.toUpperCase()) || null,
   }])
 ));
 
@@ -210,6 +239,12 @@ const html = `<title>${esc(title)} · Roadmap</title>
   .modal-body .dudas{ margin-top:12px; padding:10px 12px; background:rgba(221,0,0,0.06); border-radius:5px; border-left:2px solid var(--validate); }
   .modal-body .dudas h4{ margin:0 0 6px 0; font-size:12px; color:var(--validate); }
   .modal-body .dudas ul{ margin:0; padding-left:16px; font-size:12px; color:var(--text-muted); }
+  .modal-body .diagram{ margin:12px 0; padding:10px 12px; background:var(--card-hover); border-radius:5px; border-left:2px solid var(--ready); }
+  .modal-body .diagram h4{ margin:0 0 6px 0; font-size:12px; color:var(--ready); }
+  .modal-body .diagram pre.mermaid{ background:transparent; margin:0; padding:0; text-align:center; overflow-x:auto; }
+  .modal-body .diagram-hint{ margin:12px 0; padding:8px 10px; background:var(--card-hover); border-radius:5px; font-size:11px; color:var(--text-muted); line-height:1.5; border-left:2px dashed var(--border); }
+  .modal-body .diagram-hint code{ background:var(--bg); padding:1px 5px; border-radius:3px; font-size:10px; color:var(--text); }
+  .modal{ max-width:800px; }
 </style>
 
 <h1>🗿 ${esc(title)}</h1>
@@ -243,18 +278,29 @@ ${bloqPanel}
 
 <script>
   const STORIES = ${modalData};
+  function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function openHist(id){
     const s = STORIES[id];
     if (!s){ return; }
     document.getElementById('modal-title').textContent = id + ' · ' + s.title;
     document.getElementById('modal-subtitle').textContent = s.ready || '—';
     const dudasHtml = (s.dudas && s.dudas.length)
-      ? '<div class="dudas"><h4>Dudas abiertas asociadas</h4><ul>' + s.dudas.map(d => '<li><b>#' + d.id + '</b> · ' + (d.text || '').slice(0,180) + '</li>').join('') + '</ul></div>'
+      ? '<div class="dudas"><h4>Dudas abiertas asociadas</h4><ul>' + s.dudas.map(d => '<li><b>#' + escHtml(d.id) + '</b> · ' + escHtml((d.text || '').slice(0,180)) + '</li>').join('') + '</ul></div>'
       : '';
-    const jira = s.jira && s.jira !== '—' ? '<div><b>Jira:</b> ' + s.jira + '</div>' : '';
-    const rq = s.rq && s.rq !== '—' ? '<div><b>RQ:</b> ' + s.rq + '</div>' : '';
-    document.getElementById('modal-body').innerHTML = jira + rq + dudasHtml + '<div style="margin-top:12px;color:var(--text-muted);font-size:12px">Detalle completo en <code>stories.md</code> · sección ' + id + '.</div>';
+    const jira = s.jira && s.jira !== '—' ? '<div><b>Jira:</b> ' + escHtml(s.jira) + '</div>' : '';
+    const rq = s.rq && s.rq !== '—' ? '<div><b>RQ:</b> ' + escHtml(s.rq) + '</div>' : '';
+    // Diagrama de secuencia (fase 2b · RFC-002). Solo renderiza si existe analysis/stories/<sid>.mmd.
+    const diagramHtml = s.diagram
+      ? '<div class="diagram"><h4>Diagrama de secuencia</h4><pre class="mermaid">' + escHtml(s.diagram) + '</pre></div>'
+      : '<div class="diagram-hint">💡 Para embeber un diagrama de secuencia acá, agregá <code>analysis/stories/' + id.toLowerCase() + '.mmd</code> al intake y re-corré <code>/argos-product:intake roadmap</code>.</div>';
+    const body = jira + rq + diagramHtml + dudasHtml + '<div style="margin-top:12px;color:var(--text-muted);font-size:12px">Detalle completo en <code>stories.md</code> · sección ' + id + '.</div>';
+    const bodyEl = document.getElementById('modal-body');
+    bodyEl.innerHTML = body;
     document.getElementById('modal-overlay').classList.add('open');
+    // Re-render de Mermaid dentro del modal si el bloque fue insertado.
+    if (s.diagram && window.mermaid && typeof window.mermaid.run === 'function') {
+      try { window.mermaid.run({ nodes: bodyEl.querySelectorAll('pre.mermaid') }); } catch (_) {}
+    }
   }
   function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
   function closeIfBackdrop(e){ if (e.target.id === 'modal-overlay') closeModal(); }

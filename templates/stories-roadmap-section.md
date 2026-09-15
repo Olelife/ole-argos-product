@@ -17,6 +17,13 @@ Formato que el script espera:
 
 Si tu intake no tiene esta sección, el verbo `roadmap` va a pedirte agregarla
 antes de generar el HTML.
+
+Bonus · diagramas de secuencia por historia (fase 2b del RFC-002):
+- Ubicá los `.mmd` en `analysis/stories/<sid>.mmd` (ej: `s1.mmd`, `s13b.mmd`).
+- El script los detecta automáticamente y los embebe en el modal al cliquear la card.
+- Formato: Mermaid `sequenceDiagram` a nivel de negocio (actores + superficies + reglas,
+  sin nombres de servicios ni endpoints — esos aparecen recién en `/argos:spec`).
+- Es opt-in por historia: las historias sin `.mmd` muestran un hint amable en el modal.
 -->
 
 ## Orden de ejecución · roadmap por fase

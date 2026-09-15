@@ -59,15 +59,16 @@ Disparadores: "mostrame el intake X", "cómo va X".
 
 ### `roadmap` — entregable visual del plan de ejecución (RFC-002)
 Disparadores: "generá el roadmap del intake X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
-Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia. Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
+Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia (con diagrama de secuencia opcional). Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
 1. **Prerequisito**: el `stories.md` debe tener la sección `## Orden de ejecución · roadmap por fase` con un H3 por fase y una tabla `Historia | Título | Ready?`. Si falta, el script genera igual el HTML **con un banner de warning** que guía a pegar `templates/stories-roadmap-section.md` del motor.
 2. **Datos que consume** (todos del intake, sin Jira ni servicios externos):
    - `STATUS.md` frontmatter → título del intake.
    - `stories.md` → tabla índice de historias + sección "Orden de ejecución".
    - `decision-log.md` → dudas con estado `abierta`, cruzadas con las historias por menciones `SXX` en el cuerpo. Las que matchean se muestran como flag `🚧 #NN` en la tarjeta y en el modal.
+   - `analysis/stories/<sid>.mmd` (opcional · fase 2b) → un diagrama Mermaid `sequenceDiagram` por historia (nombres case-insensitive: `s5.mmd`, `S5.mmd`, `s13b.mmd`, `S13a.mmd`). Si existe, se embebe en el modal al cliquear la card. Si no, el modal muestra un hint amable con la ruta esperada.
 3. **Genero**: `node "${CLAUDE_PLUGIN_ROOT}/scripts/roadmap-gen.mjs" <intakes/<slug>>` → escribe `roadmap-mvp.html`. Self-contained + theme-aware (mismo patrón que `dashboard.html`).
 4. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`roadmap_artifact_url`); en corridas siguientes republico sobre esa MISMA URL (paso `url`) para conservar el link ya compartido.
-5. **Cuándo se re-corre**: al cerrar dudas grandes, al agregar/mover historias entre fases, o al cambiar el orden del plan. El HTML es regenerable — nunca se edita a mano.
+5. **Cuándo se re-corre**: al cerrar dudas grandes, al agregar/mover historias entre fases, al cambiar el orden del plan, o al agregar/actualizar un `.mmd` en `analysis/stories/`. El HTML es regenerable — nunca se edita a mano.
 
 ### `avance` — tablero de avance y proyección de cierre (datos EN VIVO de Jira)
 Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X".
