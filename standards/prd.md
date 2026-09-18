@@ -52,6 +52,18 @@ el `stage:` del frontmatter guarda hasta dónde llegó el recorrido (`/prd` reto
   vale la forma EARS — *"Cuando <evento>, el sistema debe <respuesta>"* — siempre verificable.
 - `path: retro` (PRD sobre un diseño ya hecho): §5.0 es recomendada, no obligatoria; el resto igual.
 
+## Evidencia con procedencia (el problema no es una opinión)
+Cada afirmación de §1 Problema cita **de dónde sale**: bugs o tickets de Jira, casos del QA, findings del cerebro,
+chunks del RAG, tickets de soporte, o un dato con tamaño ("34 pólizas en septiembre", "3 de los 5 asesores
+entrevistados"). Las herramientas que mejor escriben PRDs hoy no escriben mejor: **traen la evidencia debajo**.
+`prd-check` avisa cuando §1 no cita nada; `review` puntúa la dimensión *Evidencia*.
+
+## Camino corto: `/prd --lite` (one-pager)
+Un bugfix, un ajuste de copy o una regla puntual no merece 9 secciones. El one-pager (`templates/prd-lite.md`,
+frontmatter `lite: true`) exige solo Problema con evidencia · Qué cambia · Fuera de alcance · Criterios
+Dado/cuando/entonces · Dependencias, y sale como **una historia directa** a Jira sin intake. Si al escribirlo
+aparecen tres pantallas o dos roles, no era lite: se pasa al PRD completo.
+
 ## Disciplina de alcance (el dolor que resolvemos)
 - Cada ítem cae en **una** de tres cajas: **En alcance** · **Fuera de alcance** · **Contexto complementario**.
 - Ante la duda, **se pregunta** ("¿esto es parte de la funcionalidad o es complementario?") — no se asume.

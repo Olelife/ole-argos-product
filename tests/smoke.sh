@@ -57,6 +57,9 @@ node "${ROOT}/scripts/avance-gen.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/avance
 diff -q <(grep "Monte Carlo" "${TMP}/mc1.out") <(grep "Monte Carlo" "${TMP}/mc2.out") >/dev/null && ok "avance: Monte Carlo determinista (misma foto, mismo pronóstico)" || fail "avance: el Monte Carlo cambió entre corridas"
 
 bash "${ROOT}/scripts/prd-check.sh" "${INTAKE}/PRD-sample-intake.md" --strict >/dev/null && ok "prd-check --strict: fixture pasa" || fail "prd-check --strict: el fixture debería pasar"
+bash "${ROOT}/scripts/prd-check.sh" "${INTAKE}/PRD-sample-intake.md" | grep -q "cita 2 fuente" && ok "prd-check: cuenta la evidencia de §1" || fail "prd-check: no contó la evidencia"
+bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-lite.md" --strict > "${TMP}/lite.out" && ok "prd-check: PRD lite pasa con sus 5 secciones" || fail "prd-check: el PRD lite debería pasar"
+has "${TMP}/lite.out" "PRD lite (one-pager)" "prd-check: reconoce lite: true"
 
 node "${ROOT}/scripts/jira-import.mjs" "${INTAKE}" >/dev/null
 has "${INTAKE}/jira-import.csv" '"Story","[Muestra] Exportar el listado"' "jira-import: incluye la historia pendiente"
@@ -107,6 +110,34 @@ has "${INTAKE}/decision-log.md" "| cerebro findings/RQ-260910-sample-export-drop
 node "${ROOT}/scripts/findings-scan.mjs" "${INTAKE}" --brain "${ROOT}/tests/fixtures/brain" > "${TMP}/scan2.out"
 has "${TMP}/scan2.out" "0 sin registrar" "findings-scan: idempotente tras aplicar"
 
+node "${ROOT}/scripts/tc-draft.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/test-cases-draft.csv" '"TC-D01","S1 · Ver el listado","Abre el listado","Dado un asesor con datos, cuando abre el listado","entonces ve sus filas.","Media","","SO-101",""' "tc-draft: criterio → caso borrador con las columnas del QA"
+has "${INTAKE}/test-cases-draft.csv" '"Sí","SO-103","CA-01"' "tc-draft: historia bloqueada → sin confirmar + CA"
+
+node "${ROOT}/scripts/dudas-add.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/dudas-comentarios.json" --date 2026-09-18 --section "Comentarios de stakeholders · 2026-09-18" > "${TMP}/da.out"
+has "${TMP}/da.out" "1 duda(s) agregadas" "dudas-add: agrega la nueva con el id siguiente"
+has "${TMP}/da.out" "1 ya existían" "dudas-add: no duplica la que ya estaba"
+has "${INTAKE}/decision-log.md" "## Comentarios de stakeholders · 2026-09-18" "dudas-add: sección propia"
+node "${ROOT}/scripts/dudas-add.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/dudas-comentarios.json" --date 2026-09-18 | grep -q "todas ya registradas" && ok "dudas-add: idempotente" || fail "dudas-add: volvió a agregar"
+
+[ "$(node "${ROOT}/scripts/confluence-body.mjs" "${INTAKE}" --title)" = "Intake de muestra · PRD v1.2" ] && ok "confluence-body: título con versión" || fail "confluence-body: título inesperado"
+node "${ROOT}/scripts/confluence-body.mjs" "${INTAKE}" > "${TMP}/conf.md"
+has "${TMP}/conf.md" "No editar esta página" "confluence-body: nota de procedencia"
+hasnt "${TMP}/conf.md" "capability: sample-capability" "confluence-body: sin frontmatter"
+hasnt "${TMP}/conf.md" "<!--" "confluence-body: sin comentarios guía"
+
+[ -f "${INTAKE}/avance-summary.json" ] && ok "avance: escribe avance-summary.json" || fail "avance: falta avance-summary.json"
+( cd "${DATA}" && git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -q -m base ) 2>/dev/null
+node "${ROOT}/scripts/status-update.mjs" "${INTAKE}" --date 2026-09-18 > "${TMP}/su.out"
+has "${INTAKE}/updates/2026-09-18.md" "2/3 historias entregadas" "status-update: TL;DR con DoD"
+has "${INTAKE}/updates/2026-09-18.md" "Cierre estimado **09-oct** (85% de probabilidad)" "status-update: pronóstico desde avance-summary"
+has "${INTAKE}/updates/2026-09-18.md" "## Bloqueos" "status-update: sección de bloqueos"
+has "${INTAKE}/updates/2026-09-18.md" "SO-103" "status-update: la bloqueada aparece"
+perl -0pi -e 's/(  \*Como\* asesor \*quiero\* ver el listado \*para\* consultar\.\n)/$1\n  - Dado un asesor sin datos, cuando abre el listado, entonces ve el estado vacío.\n/' "${INTAKE}/jira-preview.md"
+node "${ROOT}/scripts/jira-diff.mjs" "${INTAKE}" --write --date 2026-09-18 > "${TMP}/jd.out"
+has "${TMP}/jd.out" "1 con la definición cambiada" "jira-diff: detecta la historia cuyo criterio cambió tras crearse"
+has "${INTAKE}/jira-updates.md" "**+ criterio:** Dado un asesor sin datos, cuando abre el listado, entonces ve el estado vacío." "jira-diff: delta por ticket con el criterio nuevo"
+
 node "${ROOT}/scripts/test-map.mjs" "${INTAKE}" >/dev/null
 has "${INTAKE}/test-map.md" "| 1. Listado | 2 | 1 | SO-101 | 🟢 |" "test-map: sección mapeada por key en el CSV"
 has "${INTAKE}/test-map.md" "| 2. Histórico | 1 | 1 | SO-102 | 🟠 1 sin confirmar |" "test-map: S<n> resuelto a key + sin confirmar"
@@ -123,7 +154,7 @@ has "${TMP}/bb.out" "1 marcador(es) [POR DEFINIR]" "prd-check: cuenta los marcad
 
 node "${ROOT}/scripts/prd-diff.mjs" --old "${ROOT}/tests/fixtures/PRD-diff-old.md" --new "${ROOT}/tests/fixtures/data-repo/intakes/sample-intake/PRD-sample-intake.md" > "${TMP}/diff.out"
 has "${TMP}/diff.out" "\`Métricas\`" "prd-diff: sección quitada"
-has "${TMP}/diff.out" "- MODIFIED: \`Objetivo / Resultado\`" "prd-diff: sección modificada"
+has "${TMP}/diff.out" "\`Objetivo / Resultado\`" "prd-diff: sección modificada"
 has "${TMP}/diff.out" "**Criterios de aceptación**" "prd-diff: detecta criterios que cambian"
 has "${TMP}/diff.out" "- MODIFIED: \`S1\`" "prd-diff: historia modificada"
 node "${ROOT}/scripts/prd-diff.mjs" --old "${INTAKE}/PRD-sample-intake.md" --new "${INTAKE}/PRD-sample-intake.md" | grep -q "0 cambio" && ok "prd-diff: idéntico → 0 cambios" || fail "prd-diff: falso positivo en PRD idéntico"

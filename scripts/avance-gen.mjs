@@ -398,7 +398,15 @@ ${mcBlock}${projBlock}${findingBlock}${risksBlock}
 </script>`;
 
 writeFileSync(join(dir, 'avance.html'), html);
-console.log(`✓ avance: ${join(dir, 'avance.html')}`);
+// Resumen legible por otros scripts (status-update.mjs): la foto sin el HTML.
+writeFileSync(join(dir, 'avance-summary.json'), JSON.stringify({
+  capturedAt: D.capturedAt || null, goal, total: totalN, done: done.n, remaining: remN, dodCount, weightedCount, hasWeights, dodPts,
+  stages: buckets.map(b => ({ name: b.name, n: b.n })), unmapped: unmapped.keys,
+  bugs: { total: issues.reduce((a, i) => a + ((i.bugs && i.bugs.total) || 0), 0), open: issues.reduce((a, i) => a + ((i.bugs && i.bugs.open) || 0), 0) },
+  forecast: mc ? { method: 'monte-carlo', weeks: mc.weeksSample, avgPerWeek: mc.avg, P: mc.P, dates: mc.dates, target: mc.target } : best ? { method: 'scenario', name: best.name, date: best.date, weeks: best.weeks } : null,
+  finding: D.finding ? D.finding.title : null,
+}, null, 2));
+console.log(`✓ avance: ${join(dir, 'avance.html')} (+ avance-summary.json)`);
 console.log(`  ${totalN} historias · ${done.n} en «${goal}» (${dodCount}% conteo${hasWeights ? `, ${dodPts}% peso` : ''}) · ponderado ~${hasWeights ? weightedPts : weightedCount}%`);
 if (unmapped.n) console.log(`  ⚠ ${unmapped.n} con estado sin mapear en stageOrder: ${unmapped.keys.join(', ')}`);
 if (mc) console.log(`  Monte Carlo (${mc.weeksSample} sem · ${mc.avg}/sem): P50 ${mc.dates[50]} · P85 ${mc.dates[85]} · P95 ${mc.dates[95]}${mc.target ? ` · objetivo ${mc.target.date}: ${mc.target.prob}% (${mc.target.rag})` : ''}`);

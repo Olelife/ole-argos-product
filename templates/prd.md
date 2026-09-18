@@ -26,6 +26,12 @@ path: greenfield           # greenfield (alcance en texto ANTES del Figma) | ret
 ## 1. Problema / Por qué
 <!-- 2-3 frases: el dolor de usuario o negocio. Por qué importa AHORA. (No la solución todavía.) -->
 
+**Evidencia:**
+<!-- Cada afirmación del problema cita su fuente, con tamaño cuando lo hay. Sin fuente es opinión, no problema.
+     Fuentes válidas: bugs/tickets de Jira (SO-123), casos del QA (TC-12), findings del cerebro (findings/x.md),
+     chunks del RAG (RAG: ruta), tickets de soporte, datos ("34 pólizas en septiembre"). -->
+- <hecho> — <fuente> (<tamaño/fecha>)
+
 ## 2. Objetivo / Resultado
 <!-- Cómo se ve el éxito. Medible si se puede (métrica + meta). -->
 

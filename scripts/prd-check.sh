@@ -8,6 +8,8 @@ set -euo pipefail
 #   · preguntas abiertas con dueño · marcadores [POR DEFINIR: …] contados (bloquean el ready)
 #   · un PRD `ready` no puede tener huecos, preguntas `open` ni marcadores
 #   · --stage=<encuadre|breadboard|diseno|cierre> valida SOLO lo que esa etapa exige (RFC-003); sin flag = todo (como siempre).
+#   · frontmatter `lite: true` (one-pager /prd --lite): exige Problema · Qué cambia · Fuera · Criterios · Dependencias.
+#   · §1 Problema tiene que citar evidencia (ticket, TC, finding, dato con tamaño).
 # Advisory: sale 0 salvo con --strict (sale 1 si hay ⚠) o si un PRD `ready` tiene huecos (siempre 1).
 # Lo usa /argos-product:prd (paso 8) e /argos-product:intake (verbo aprobar); el CI lo corre en --strict.
 
@@ -50,9 +52,10 @@ if m:
         if _: fm[k.strip()] = re.sub(r'\s+#.*$', '', v).strip()
 else:
     flag('sin frontmatter (--- title/epic/status/capability/country ---)')
-for k in ['title', 'epic', 'status', 'capability', 'country']:
-    if not fm.get(k) or re.match(r'^<.*>$', fm.get(k, '')): flag(f'frontmatter: falta {k}')
 status = fm.get('status', '?')
+lite = str(fm.get('lite', '')).lower() in ('true', 'yes', 'sí', 'si', '1')
+for k in (['title', 'status', 'capability', 'country'] if lite else ['title', 'epic', 'status', 'capability', 'country']):
+    if not fm.get(k) or re.match(r'^<.*>$', fm.get(k, '')): flag(f'frontmatter: falta {k}')
 
 # secciones obligatorias (standards/prd.md) — por etapa si se pidió (RFC-003)
 def has(sec): return re.search(r'^#+\s.*(?:' + sec + ')', doc, re.M | re.I) is not None
@@ -62,8 +65,10 @@ def section(sec):
 FULL = ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', 'Comportamiento', '(Historias|Épicas)', 'Preguntas abiertas', 'Contexto complementario']
 BY_STAGE = {'encuadre': ['Problema', 'Objetivo'], 'breadboard': ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', r'5\.0\s+Mapa|5\.0'],
             'diseno': ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', r'5\.0\s+Mapa|5\.0', 'Comportamiento'], 'cierre': FULL}
-for sec in BY_STAGE.get(stage, FULL):
+LITE = ['Problema', 'Qué cambia|En alcance', 'Fuera de alcance', 'Criterios|Historias', 'Dependencias']
+for sec in (LITE if lite else BY_STAGE.get(stage, FULL)):
     if not has(sec): flag(f'falta sección: {sec}')
+if lite: info('PRD lite (one-pager): se exigen Problema · Qué cambia · Fuera · Criterios · Dependencias')
 if stage in ('breadboard', 'diseno'):
     bb = section(r'5\.0\s+Mapa|5\.0')
     rows = [r for r in bb.split('\n') if r.strip().startswith('|')][2:]
@@ -94,14 +99,21 @@ if n_ph: flag(f'{n_ph} placeholder(s) sin completar (<…> / TODO)')
 if '<!--' in doc: flag('quedan comentarios guía <!-- --> sin borrar')
 
 early = stage in ('encuadre', 'breadboard', 'diseno')
+# Evidencia con procedencia en §1 (Enterpret/BuildBetter: cada afirmación del problema cita su fuente)
+sec1 = section(r'Problema')
+if sec1 and not lite:
+    cites = re.findall(r'\b[A-Z][A-Z0-9]+-\d+\b|\bTC-\d+|findings/[\w.-]+|RAG:|https?://|\b\d+\s+(?:pólizas|casos|tickets|cuentas|asesores|clientes|bugs)\b', sec1)
+    if not cites: flag('§1 Problema no cita evidencia (ticket, bug, TC del QA, finding, dato con tamaño): sin fuente es opinión')
+    else: info(f'§1 cita {len(cites)} fuente(s) de evidencia')
+
 # Resumen para Dev
-if not early and not re.search(r'Resumen para Dev', doc): flag('falta el bloque "Resumen para Dev" arriba (qué se construye · alcance · sub-tareas)')
+if not early and not lite and not re.search(r'Resumen para Dev', doc): flag('falta el bloque "Resumen para Dev" arriba (qué se construye · alcance · sub-tareas)')
 
 # historias de §6 con criterios verificables
 stories = re.findall(r'^###\s+((?:EP-[A-Z0-9-]+-)?[SH]\d+[a-z]?)\b[^\n]*\n(.*?)(?=^###\s|^##\s|\Z)', doc, re.M | re.S)
 sin = [sid for sid, body in stories if not re.search(r'^\s*-\s*(\[[ x]\]\s*)?Dad[oa]s?\b.*\b(cuando|entonces)\b', body, re.M | re.I)]
-if early:
-    pass
+if early or (lite and not stories):
+    if lite and not re.search(r'^\s*[-*]\s*(\[[ x]\]\s*)?Dad[oa]s?\b.*\b(cuando|entonces)\b', doc, re.M | re.I): flag('PRD lite sin ningún criterio Dado/cuando/entonces')
 elif stories:
     if sin: flag(f'{len(sin)} de {len(stories)} historias sin criterio Dado/cuando/entonces: {", ".join(sin[:6])}{"…" if len(sin) > 6 else ""}')
     else: info(f'{len(stories)} historias, todas con criterios verificables')
