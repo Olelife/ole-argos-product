@@ -15,6 +15,9 @@ path: greenfield           # greenfield (alcance en texto ANTES del Figma) | ret
 
 # <título>
 
+<!-- Lo que no sabés todavía NO se asume: dejalo marcado en el lugar exacto con `[POR DEFINIR: pregunta — dueño]`.
+     prd-check los cuenta; `aprobar` exige cero (se resuelven o pasan a §7 Preguntas abiertas con dueño). -->
+
 > **Resumen para Dev** (TL;DR — completalo al final, es lo primero que lee quien toma la tarea)
 > - **Qué se construye:** <1-2 líneas>.
 > - **Alcance:** en = <una línea> · fuera = <una línea>.

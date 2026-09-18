@@ -50,6 +50,11 @@ node "${ROOT}/scripts/avance-gen.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/avance
 has "${INTAKE}/avance.html" "1 de 3 historias" "avance: DoD por conteo"
 has "${INTAKE}/avance.html" "argos-product:avance" "avance: footer cita el skill vigente"
 has "${INTAKE}/avance.html" "olelife.atlassian.net/browse/SO-150" "avance: bug linkeado con host correcto"
+has "${INTAKE}/avance.html" "Pronóstico probabilístico" "avance: sección Monte Carlo con serie semanal"
+has "${INTAKE}/avance.html" "<td>P85</td>" "avance: percentiles"
+has "${INTAKE}/avance.html" "Fecha comprometida 2026-10-30" "avance: semáforo contra target_date"
+node "${ROOT}/scripts/avance-gen.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/avance-input.json" > "${TMP}/mc1.out"; node "${ROOT}/scripts/avance-gen.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/avance-input.json" > "${TMP}/mc2.out"
+diff -q <(grep "Monte Carlo" "${TMP}/mc1.out") <(grep "Monte Carlo" "${TMP}/mc2.out") >/dev/null && ok "avance: Monte Carlo determinista (misma foto, mismo pronóstico)" || fail "avance: el Monte Carlo cambió entre corridas"
 
 bash "${ROOT}/scripts/prd-check.sh" "${INTAKE}/PRD-sample-intake.md" --strict >/dev/null && ok "prd-check --strict: fixture pasa" || fail "prd-check --strict: el fixture debería pasar"
 
@@ -66,6 +71,14 @@ has "${TMP}/sync.out" "SO-102    Staging → Ready to Prod" "stories-sync: repor
 has "${TMP}/sync.out" "sin fila en stories.md: SO-199" "stories-sync: detecta issues huérfanos"
 has "${INTAKE}/stories.md" "| S3 | Exportar | 🚧 (bloqueada · duda #1) | En curso | [SO-103](https://olelife.atlassian.net/browse/SO-103) | — |" "stories-sync: key por label + Estado Jira, resto intacto"
 has "${INTAKE}/stories.md" "| S2 | Ver el histórico | 🟡 | Ready to Prod | SO-102 | — |" "stories-sync: no reescribe celdas que no cambian"
+
+node "${ROOT}/scripts/stories-ready.mjs" "${INTAKE}" > "${TMP}/ready.out"
+has "${INTAKE}/stories.md" "| S1 | Ver el listado | 🟢 LISTO |" "stories-ready: criterios + frame + sin dudas → LISTO"
+has "${INTAKE}/stories.md" "| S2 | Ver el histórico | 🚧 BLOQUEADA (bloqueada por duda #1) |" "stories-ready: duda que bloquea → BLOQUEADA (sin degradar por criterios: ya está en Jira)"
+has "${INTAKE}/stories.md" "| S3 | Exportar | 🚧 BLOQUEADA (bloqueada por duda #1) |" "stories-ready: la duda que la bloquea gana"
+node "${ROOT}/scripts/stories-ready.mjs" "${INTAKE}" | grep -q "Sin cambios de readiness" && ok "stories-ready: idempotente" || fail "stories-ready: no es idempotente"
+node "${ROOT}/scripts/roadmap-gen.mjs" "${INTAKE}" >/dev/null 2>&1
+[ "$(grep -o 'class="block b-block"' "${INTAKE}/roadmap-mvp.html" | wc -l | tr -d ' ')" = "2" ] && ok "roadmap: lee el Ready? calculado del índice (S2 y S3 bloqueadas)" || fail "roadmap: no tomó el Ready? del índice"
 
 node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" --date 2026-09-18 >/dev/null
 has "${INTAKE}/STATUS.md" "- **Historias:** 2 cerradas / 3 totales · 3 en Jira" "status-render: conteos tras el sync"
@@ -105,7 +118,15 @@ bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-breadboard-stage
 has "${TMP}/bb.out" 'se extiende a "Logalty"' "prd-check --stage=breadboard: detecta el → externo sin resolver"
 hasnt "${TMP}/bb.out" 'se extiende a "Excel"' "prd-check --stage=breadboard: el → externo cubierto en §4 pasa"
 hasnt "${TMP}/bb.out" "falta sección: Preguntas abiertas" "prd-check --stage=breadboard: no exige etapas posteriores"
-bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-breadboard-stage.md" --stage=encuadre --strict >/dev/null && ok "prd-check --stage=encuadre: pasa con §1 §2" || fail "prd-check --stage=encuadre debería pasar"
+bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-breadboard-stage.md" --stage=encuadre --strict >/dev/null && fail "prd-check --strict: debería fallar por el marcador [POR DEFINIR]" || ok "prd-check --strict: el marcador [POR DEFINIR] bloquea"
+has "${TMP}/bb.out" "1 marcador(es) [POR DEFINIR]" "prd-check: cuenta los marcadores de ambigüedad"
+
+node "${ROOT}/scripts/prd-diff.mjs" --old "${ROOT}/tests/fixtures/PRD-diff-old.md" --new "${ROOT}/tests/fixtures/data-repo/intakes/sample-intake/PRD-sample-intake.md" > "${TMP}/diff.out"
+has "${TMP}/diff.out" "\`Métricas\`" "prd-diff: sección quitada"
+has "${TMP}/diff.out" "- MODIFIED: \`Objetivo / Resultado\`" "prd-diff: sección modificada"
+has "${TMP}/diff.out" "**Criterios de aceptación**" "prd-diff: detecta criterios que cambian"
+has "${TMP}/diff.out" "- MODIFIED: \`S1\`" "prd-diff: historia modificada"
+node "${ROOT}/scripts/prd-diff.mjs" --old "${INTAKE}/PRD-sample-intake.md" --new "${INTAKE}/PRD-sample-intake.md" | grep -q "0 cambio" && ok "prd-diff: idéntico → 0 cambios" || fail "prd-diff: falso positivo en PRD idéntico"
 
 echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

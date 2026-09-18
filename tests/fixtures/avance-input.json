@@ -1,10 +1,63 @@
-{ "capturedAt": "2026-09-18", "project": "SO", "epics": ["SO-100"],
-  "stageOrder": ["Tareas por hacer", "En curso", "Staging", "Ready to Prod"],
-  "issues": [
-    { "key": "SO-101", "status": "Ready to Prod", "summary": "Ver el listado", "assignee": "Ana" },
-    { "key": "SO-102", "status": "Staging", "summary": "Ver el histórico", "assignee": "Luis",
-      "bugs": { "total": 1, "open": 1, "openKeys": ["SO-150"], "keys": ["SO-150"],
-                "items": [ { "key": "SO-150", "status": "En curso", "open": true, "assignee": "Luis", "summary": "Falla el orden" } ] } },
-    { "key": "SO-103", "status": "Tareas por hacer", "summary": "Exportar" }
+{
+  "capturedAt": "2026-09-18",
+  "project": "SO",
+  "epics": [
+    "SO-100"
   ],
-  "throughputRecentPerWeek": 2 }
+  "stageOrder": [
+    "Tareas por hacer",
+    "En curso",
+    "Staging",
+    "Ready to Prod"
+  ],
+  "issues": [
+    {
+      "key": "SO-101",
+      "status": "Ready to Prod",
+      "summary": "Ver el listado",
+      "assignee": "Ana"
+    },
+    {
+      "key": "SO-102",
+      "status": "Staging",
+      "summary": "Ver el histórico",
+      "assignee": "Luis",
+      "bugs": {
+        "total": 1,
+        "open": 1,
+        "openKeys": [
+          "SO-150"
+        ],
+        "keys": [
+          "SO-150"
+        ],
+        "items": [
+          {
+            "key": "SO-150",
+            "status": "En curso",
+            "open": true,
+            "assignee": "Luis",
+            "summary": "Falla el orden"
+          }
+        ]
+      }
+    },
+    {
+      "key": "SO-103",
+      "status": "Tareas por hacer",
+      "summary": "Exportar"
+    }
+  ],
+  "throughputRecentPerWeek": 2,
+  "throughputWeekly": [
+    1,
+    0,
+    2,
+    1,
+    0,
+    1,
+    2,
+    1
+  ],
+  "targetDate": "2026-10-30"
+}

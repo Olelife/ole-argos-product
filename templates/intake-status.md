@@ -15,6 +15,7 @@ updated: <YYYY-MM-DD>
 # jira_epics: [SO-000]             # épicas que barre /avance
 # jira_goal_status: Ready to Prod  # meta = historia cerrada (también cuenta en dashboard/INDEX vía "Estado Jira")
 # jira_stage_order: ["Tareas por hacer", "En curso", "Staging", "Ready to Prod"]
+# target_date: <YYYY-MM-DD>       # fecha comprometida → semáforo del Monte Carlo en /avance
 # base_branch: <rama>              # rama de integración propia (sección "Base técnica" de la épica)
 # deploy_env: <INT | staging-mx | staging-br>
 # source_intake: intakes/<slug>    # intake origen (adaptación de mercado)

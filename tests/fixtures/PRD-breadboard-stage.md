@@ -20,7 +20,7 @@ No hay listado.
 Que exista.
 
 ## 3. ✅ En alcance
-- Listado.
+- Listado. [POR DEFINIR: ¿incluye pólizas de la downline? — PM]
 
 ## 4. 🚫 Fuera de alcance
 - Exportar a Excel.
