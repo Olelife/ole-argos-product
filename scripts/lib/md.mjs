@@ -187,6 +187,12 @@ export function dudaOpen(row) {
   return stateOf(DUDA.state(row)).startsWith('abierta');
 }
 
+// Abierta O con una respuesta propuesta en Slack que el PM todavía no ratificó: sigue pendiente para readiness.
+export function dudaPending(row) {
+  const st = stateOf(DUDA.state(row));
+  return st.startsWith('abierta') || st.startsWith('propuesta-en-slack');
+}
+
 export function jiraBaseOf(fm, override) {
   return String(override || fm.jira_base || process.env.OLE_JIRA_BASE || JIRA_BASE_DEFAULT).replace(/\/+$/, '');
 }

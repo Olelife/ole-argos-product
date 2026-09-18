@@ -44,7 +44,7 @@ if (existsSync(fDir)) figmaVers = readdirSync(fDir, { withFileTypes: true })
   .map(v => { let s = {}; try { s = JSON.parse(readMaybe(join(fDir, v, 'structure.json')) || '{}'); } catch {} return { v, n: (s.frames || []).length, at: s.capturedAt || '—', scope: s.scope || '' }; });
 
 const badge = (txt, cls) => `<span class="badge ${cls}">${esc(txt)}</span>`;
-const dudaCls = s => ({ 'abierta': 'b-red', 'resuelta': 'b-green', 'aplicada-al-prd': 'b-teal', 'descartada': 'b-grey' }[(s || '').toLowerCase()] || 'b-grey');
+const dudaCls = s => ({ 'abierta': 'b-red', 'propuesta-en-slack': 'b-amber', 'resuelta': 'b-green', 'aplicada-al-prd': 'b-teal', 'descartada': 'b-grey' }[stateOf(s)] || 'b-grey');
 const storyCls = s => ({ 'propuesta': 'b-grey', 'en-jira': 'b-blue', 'en-rq': 'b-amber', 'cerrada': 'b-green' }[(s || '').toLowerCase()] || 'b-grey');
 
 const dudaRows = dudas.map(r => `<tr><td>${esc(DUDA.id(r))}</td><td>${esc(DUDA.text(r))}</td><td class="dim">${esc(DUDA.source(r))}</td><td>${badge(DUDA.state(r), dudaCls(DUDA.state(r)))}</td><td>${esc(DUDA.answer(r))}</td><td class="dim">${esc(DUDA.date(r))}</td></tr>`).join('');

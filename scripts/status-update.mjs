@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { join, basename, relative, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
-import { readMaybe, parseFrontmatter, parseTable, STORY, DUDAS, DUDA, dudaOpen, storyClosed, stateOf, col, jiraBaseOf, asList } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDAS, DUDA, dudaOpen, dudaPending, storyClosed, stateOf, col, jiraBaseOf, asList } from './lib/md.mjs';
 
 const args = process.argv.slice(2);
 const dir = args[0] && existsSync(args[0]) ? realpathSync(args[0]) : args[0];
@@ -70,7 +70,8 @@ const blocked = stories.filter(r => readyOf(r) === '🚧' && !storyClosed(r, goa
 const prio = r => col(r, 'prioridad').toUpperCase().trim();
 const next = stories.filter(r => !storyClosed(r, goal) && !['descartada', 'desestimada'].includes(stateOf(STORY.state(r)))).sort((a, b) => (prio(a) || 'P9').localeCompare(prio(b) || 'P9')).slice(0, 5);
 const openDudas = dudas.filter(dudaOpen);
-const asks = openDudas.filter(d => /PREGUNTA a Producto|CONTRADICE|bloque/i.test(DUDA.text(d))).slice(-5).reverse();
+const inSlack = dudas.filter(d => dudaPending(d) && !dudaOpen(d));
+const asks = [...inSlack, ...openDudas.filter(d => /PREGUNTA a Producto|CONTRADICE|bloque/i.test(DUDA.text(d)))].slice(0, 6);
 
 const pct = total ? Math.round(closedNow.length / total * 100) : 0;
 const L = [];
@@ -87,7 +88,7 @@ L.push(...(blocked.length ? blocked.map(r => `- ${STORY.title(r)} · ${link(r)} 
 L.push('## Próximo');
 L.push(...(next.length ? next.map(r => `- ${prio(r) ? `**${prio(r)}** · ` : ''}${STORY.title(r)} · ${link(r)}${readyOf(r) ? ` ${readyOf(r)}` : ''}`) : ['- Todo el alcance está entregado.']), '');
 L.push('## Decisiones que necesitamos');
-L.push(...(asks.length ? asks.map(d => `- **#${DUDA.id(d)}** ${DUDA.text(d).replace(/\*\*/g, '').replace(/\s+/g, ' ').slice(0, 220)}${DUDA.text(d).length > 220 ? '…' : ''}`) : openDudas.length ? [`- ${openDudas.length} dudas abiertas en el decision-log; ninguna marcada como bloqueante o pregunta explícita.`] : ['- Sin decisiones pendientes.']), '');
+L.push(...(asks.length ? asks.map(d => `- **#${DUDA.id(d)}**${inSlack.includes(d) ? ' ⏳ *propuesta en Slack, falta ✅ del PM* —' : ''} ${DUDA.text(d).replace(/\*\*/g, '').replace(/\s+/g, ' ').slice(0, 220)}${DUDA.text(d).length > 220 ? '…' : ''}`) : openDudas.length ? [`- ${openDudas.length} dudas abiertas en el decision-log; ninguna marcada como bloqueante o pregunta explícita.`] : ['- Sin decisiones pendientes.']), '');
 L.push('## Pronóstico');
 if (av && av.forecast && av.forecast.method === 'monte-carlo') {
   L.push(`Monte Carlo sobre las últimas ${av.forecast.weeks} semanas reales (${av.forecast.avgPerWeek} historias/semana): **P50 ${av.forecast.dates[50]} · P85 ${av.forecast.dates[85]} · P95 ${av.forecast.dates[95]}**.${av.forecast.target ? ` Probabilidad de llegar al ${av.forecast.target.date}: **${av.forecast.target.prob}%**.` : ''} Son probabilidades, no promesas.`);

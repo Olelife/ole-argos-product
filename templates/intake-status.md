@@ -9,6 +9,7 @@ figma_version: v1        # apunta a figma/v1/
 figma_url: <url con node-id o "—">   # o un bloque anidado con una URL por sección (asesores: …, portal-ole: …)
 updated: <YYYY-MM-DD>
 # --- opcionales (los leen los scripts del motor; borrá los que no apliquen) ---
+# slack_channel: "#squad-petra-interno"   # canal donde `preguntar` abre un hilo por duda (default si falta)
 # jira_project: SO                 # proyecto de Jira (widget de tickets, handoff)
 # jira_base: https://olelife.atlassian.net   # host de Jira para los links
 # jira_title_prefix: "[Producto][Módulo]"     # prefijo de los títulos al crear en Jira
