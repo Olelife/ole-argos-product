@@ -6,7 +6,7 @@
 //
 //   🟢 LISTO           tiene criterios Dado/cuando/entonces (o EARS) · tiene frame de Figma (si el intake tiene Figma)
 //                      · ninguna duda `abierta` la menciona · no depende de una historia sin cerrar
-//   🟡 WITH QUESTIONS  alguna duda `abierta` la menciona (sin marcarla bloqueante)
+//   🟡 WITH QUESTIONS  alguna duda `abierta` o `propuesta-en-Slack` (sin ✅ del PM) la menciona, sin marcarla bloqueante
 //   🟠 NEED VALIDATE   le faltan criterios verificables o el frame de Figma
 //   🚧 BLOQUEADA       una duda `abierta` la nombra como bloqueada/bloqueante, o depende de una historia no cerrada
 //   —                  descartada / desestimada (no se evalúa)
@@ -16,7 +16,7 @@
 // Escribe la columna `Ready?` (la crea si falta) y deja el motivo por historia en la salida. Los markdown son la verdad.
 import { writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, normalizeHeader, STORY, DUDAS, DUDA, dudaOpen, stateOf, figmaUrls, storyClosed } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, normalizeHeader, STORY, DUDAS, DUDA, dudaPending, stateOf, figmaUrls, storyClosed } from './lib/md.mjs';
 
 const args = process.argv.slice(2);
 const dir = args[0];
@@ -57,7 +57,7 @@ for (const r of rows) {
   const hasFrame = !hasFigma || FIGMA.test(body) || inJira;
   if (!GWT.test(body) && !inJira) why.push('sin criterios Dado/cuando/entonces');
   if (hasFigma && !FIGMA.test(body) && !inJira) why.push('sin frame de Figma');
-  const mentions = dudas.filter(d => dudaOpen(d) && new RegExp(`\\b${sid}\\b`, 'i').test(DUDA.text(d) + ' ' + DUDA.answer(d)));
+  const mentions = dudas.filter(d => dudaPending(d) && new RegExp(`\\b${sid}\\b`, 'i').test(DUDA.text(d) + ' ' + DUDA.answer(d)));
   const blocking = mentions.filter(d => /bloque/i.test(DUDA.text(d) + ' ' + DUDA.answer(d)));
   const deps = [...body.matchAll(/depende de\s+(?:la\s+)?(?:historia\s+)?([SH]\d+[a-z]?)/gi)].map(m => m[1].toUpperCase()).filter(d => d !== sid && !closedIds.has(d));
   let ready;

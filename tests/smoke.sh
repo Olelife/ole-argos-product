@@ -159,5 +159,28 @@ has "${TMP}/diff.out" "**Criterios de aceptación**" "prd-diff: detecta criterio
 has "${TMP}/diff.out" "- MODIFIED: \`S1\`" "prd-diff: historia modificada"
 node "${ROOT}/scripts/prd-diff.mjs" --old "${INTAKE}/PRD-sample-intake.md" --new "${INTAKE}/PRD-sample-intake.md" | grep -q "0 cambio" && ok "prd-diff: idéntico → 0 cambios" || fail "prd-diff: falso positivo en PRD idéntico"
 
+# ---- T6 · dudas por Slack (al final: cambia el estado de la duda #1 que los checks anteriores necesitan abierta)
+node "${ROOT}/scripts/dudas-publish.mjs" "${INTAKE}" --ids 1 > "${TMP}/pub.out"
+has "${TMP}/pub.out" "1 duda(s) para publicar en #squad-petra-interno" "dudas-publish: canal default del squad"
+has "${TMP}/pub.out" "*Duda #1 · Intake de muestra" "dudas-publish: título con el #"
+has "${TMP}/pub.out" "<https://olelife.atlassian.net/browse/SO-102|SO-102> Ver el histórico" "dudas-publish: historias con link a Jira en mrkdwn"
+has "${TMP}/pub.out" "la ratifica el PM con ✅" "dudas-publish: consigna de ratificación"
+node "${ROOT}/scripts/dudas-resolve.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/slack-permalink.json" --date 2026-09-18 >/dev/null
+has "${INTAKE}/decision-log.md" "PRD §5 · Slack #squad-petra-interno · https://olelifeworkspace.slack.com/archives/C09C4UED6JJ/p1785948368848429" "dudas-resolve: permalink agregado a la Fuente"
+node "${ROOT}/scripts/dudas-publish.mjs" "${INTAKE}" --ids 1 | grep -q "ninguna duda para publicar" && ok "dudas-publish: omite la duda que ya tiene hilo" || fail "dudas-publish: volvió a publicar la #1"
+node "${ROOT}/scripts/dudas-resolve.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/slack-propuesta.json" --date 2026-09-18 >/dev/null
+node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/STATUS.md" "1 propuesta en Slack esperando ✅" "status-render: cuenta la propuesta sin ratificar"
+node "${ROOT}/scripts/stories-ready.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/stories.md" "| S3 | Exportar | 🚧 BLOQUEADA (bloqueada por duda #1) |" "stories-ready: una propuesta sin ✅ sigue bloqueando"
+node "${ROOT}/scripts/status-update.mjs" "${INTAKE}" --date 2026-09-19 >/dev/null
+has "${INTAKE}/updates/2026-09-19.md" "⏳ *propuesta en Slack, falta ✅ del PM*" "status-update: pide la ratificación"
+node "${ROOT}/scripts/dudas-resolve.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/slack-resuelta.json" --date 2026-09-18 > "${TMP}/res.out"
+has "${TMP}/res.out" "#1 → resuelta" "dudas-resolve: resuelta con sustento"
+has "${INTAKE}/decision-log.md" "**Resuelta por Ana Roncal en Slack (2026-09-18, [hilo](https://olelifeworkspace.slack.com/archives/C09C4UED6JJ/p1785948368848429)):** «los últimos 12 meses, con paginación» — ratificado ✅ por Alexander Cerna." "dudas-resolve: cita textual + autor + fecha + permalink + ✅"
+node "${ROOT}/scripts/stories-ready.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/stories.md" "| S3 | Exportar | 🟢 LISTO |" "stories-ready: resuelta la duda, S3 queda LISTO"
+node "${ROOT}/scripts/dudas-resolve.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/slack-resuelta.json" --date 2026-09-18 | grep -q "ya estaban así" && ok "dudas-resolve: idempotente" || fail "dudas-resolve: reescribió sin cambios"
+
 echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

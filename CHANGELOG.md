@@ -2,6 +2,14 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.20.0 — Dudas por Slack con sustento: `preguntar` y `slack`
+
+Tanda T6 (2026-09-18). Las respuestas que Producto da por Slack entraban al decision-log como "resuelta" sin quién, cuándo ni link; ahora el intake abre el hilo, lee la respuesta ratificada y la cita.
+
+- **Verbo `preguntar`** + `dudas-publish.mjs`: un mensaje raíz por duda en el canal del intake (`slack_channel` del STATUS; default `#squad-petra-interno`): # y historias con link a Jira, la duda, el default de Argos y la consigna de ratificación. Envío con OK explícito (publicar es publicar). El permalink del hilo queda en la Fuente de la fila.
+- **Verbo `slack`** + `dudas-resolve.mjs`: lee los hilos con permalink; cuenta como respuesta la del dueño de la duda o la que tenga **✅ del PM**; escribe el sustento con formato fijo (`Resuelta por <quién> en Slack (<fecha>, [hilo]) : «cita textual» — ratificado ✅ por <PM>`); sin ✅ la fila queda **`propuesta-en-Slack`** (estado nuevo, visible en STATUS, dashboard y `update`; la historia sigue 🟡). Cierra el hilo avisando el # registrado. Corre en la rutina semanal antes de `avance` y `update`.
+- `dudas-resolve.mjs`: actualiza filas por id en cualquier tabla del decision-log (estado, respuesta o respuesta_add, fuente_add), idempotente. `stateOf`/`dudaPending` en la librería; lint, dashboard y readiness conocen el estado nuevo.
+
 ## v1.19.0 — Cerrar el círculo hacia afuera: updates, PRD → Jira, evidencia, comentarios, Confluence, TCs, lite
 
 Tanda T5 (2026-09-18), segunda mitad del bench de mercado.

@@ -26,7 +26,7 @@ const stories = parseTable(readMaybe(join(dir, 'stories.md')), 'Historia');
 const cnt = (rows, f) => rows.filter(f).length;
 const dState = s => rows => cnt(rows, r => stateOf(DUDA.state(r)).startsWith(s));
 const open = cnt(dudas, dudaOpen);
-const applied = dState('aplicada-al-prd')(dudas), resolved = dState('resuelta')(dudas), discarded = dState('descartada')(dudas);
+const applied = dState('aplicada-al-prd')(dudas), resolved = dState('resuelta')(dudas), discarded = dState('descartada')(dudas), inSlack = dState('propuesta-en-slack')(dudas);
 const closed = cnt(stories, r => storyClosed(r, fm.jira_goal_status));
 const inJira = cnt(stories, r => !!STORY.jira(r));
 
@@ -39,7 +39,7 @@ const figmaLinks = figmaUrls(fm).map(f => `[${f.key}](${f.url})`).join(' · ');
 const epics = asList(fm.jira_epics).map(k => `[${k}](${jiraBase}/browse/${k})`).join(' · ');
 
 const b = [];
-b.push(`- **Dudas:** ${open} abiertas / ${dudas.length} totales${dudas.length ? ` (${applied} aplicadas al PRD · ${resolved} resueltas · ${discarded} descartadas)` : ''}.`);
+b.push(`- **Dudas:** ${open} abiertas / ${dudas.length} totales${dudas.length ? ` (${applied} aplicadas al PRD · ${resolved} resueltas · ${discarded} descartadas${inSlack ? ` · **${inSlack} propuesta${inSlack > 1 ? 's' : ''} en Slack esperando ✅**` : ''})` : ''}.`);
 b.push(`- **Historias:** ${closed} cerradas / ${stories.length} totales · ${inJira} en Jira${fm.jira_goal_status ? ` (cerrada = \`Estado: cerrada\` o \`Estado Jira\` = «${fm.jira_goal_status}»)` : ''}.`);
 b.push(`- **Última versión:** PRD **${fm.prd_version || '—'}** · Figma **${fm.figma_version || '—'}**${frames}${figmaLinks ? ` · ${figmaLinks}` : ''}.`);
 if (epics) b.push(`- **Jira:** ${fm.jira_project ? `proyecto ${fm.jira_project} · ` : ''}épica(s) ${epics}.`);
