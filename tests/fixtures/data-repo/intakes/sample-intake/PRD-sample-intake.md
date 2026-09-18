@@ -19,6 +19,9 @@ figma: https://www.figma.com/design/FILEKEY/Archivo?node-id=10-20
 ## 1. Problema / Por qué
 No hay listado.
 
+**Evidencia:**
+- 12 asesores pidieron el listado en septiembre — SO-90 (2026-09-02)
+
 ## 2. Objetivo / Resultado
 Que exista.
 

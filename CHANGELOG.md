@@ -2,6 +2,19 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.19.0 — Cerrar el círculo hacia afuera: updates, PRD → Jira, evidencia, comentarios, Confluence, TCs, lite
+
+Tanda T5 (2026-09-18), segunda mitad del bench de mercado.
+
+- **`status-update.mjs` + verbo `update`**: `updates/<fecha>.md` para stakeholders desde el intake y su git — TL;DR con DoD y P85, **release notes** en lenguaje de negocio (derivadas del *Como/quiero/para*), bloqueos, próximo por prioridad, decisiones pendientes, pronóstico. `avance-gen` deja `avance-summary.json` para alimentarlo. Referencia: stakeholder-comms del plugin PM de Anthropic, release notes de Productboard Spark.
+- **`jira-diff.mjs`** (PRD → Jira, la dirección que faltaba): historias ya creadas cuya definición cambió desde su alta (criterios +/−, frames) → `jira-updates.md` con el delta por ticket y la descripción nueva; se aplica con `editJiraIssue` una por una y con gate. Referencia: sync de dos vías de Productboard.
+- **Evidencia con procedencia** en §1 (template, standard, `prd-check` avisa si no cita nada; `review` la puntúa). Referencia: Enterpret, BuildBetter.
+- **Verbo `comentarios`** + `dudas-add.mjs`: comentarios de los stakeholders en los Artifacts publicados → dudas del decision-log (idempotente por fuente+texto, sección propia). Referencia: multiplayer de Spark/Notion.
+- **Verbo `publicar`** + `confluence-body.mjs`: el PRD en Confluence como copia regenerable con nota de procedencia; `confluence_page_id` en STATUS.
+- **`tc-draft.mjs`**: un caso de prueba borrador por criterio Dado/cuando/entonces, con las columnas del CSV del QA. Referencia: test scenarios de Figflow.
+- **`/prd --lite`** (`templates/prd-lite.md`, `lite: true`): one-pager de 5 secciones para bugfix/ajuste; `prd-check` lo valida como tal. Referencia: Quick Flow de BMAD.
+- `rag-sync` indexa `updates/`, `jira-updates.md`, `changelog-prd.md` y `review.md`.
+
 ## v1.18.0 — Medir y cuidar: Monte Carlo, Definition of Ready calculada, marcadores, review, deltas del PRD
 
 Tanda T4 (2026-09-18), lo que el bench de mercado mostró que otros hacen mejor y sí vale tomar.

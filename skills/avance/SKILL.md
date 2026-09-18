@@ -136,7 +136,7 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/avance-gen.mjs" "intakes/<slug>" <scratchpad>/avance-input.json
    ```
-   Escribe `intakes/<slug>/avance.html`.
+   Escribe `intakes/<slug>/avance.html` y `avance-summary.json` (la foto y el pronóstico sin HTML: lo lee el verbo `update` de `/intake` para el status de stakeholders).
 
 6. **Publico el Artifact**:
    - Si `avance_artifact_url` está en `STATUS.md` → republico ahí (paso `url`) para
@@ -155,7 +155,7 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
 8. **Commit + push** al repo de datos, en `main`:
    - Mensaje: `📊 Avance(<title-corto>): <resumen de movimientos>` (una línea, imperativo).
      Ej: `📊 Avance(Módulo Póliza): SO-930/SO-931 a Staging; SO-1033/SO-1036 en curso`.
-   - `git add intakes/<slug>/avance.html intakes/<slug>/stories.md intakes/<slug>/STATUS.md`.
+   - `git add intakes/<slug>/avance.html intakes/<slug>/avance-summary.json intakes/<slug>/stories.md intakes/<slug>/STATUS.md`.
    - Autor: nombre + email del `git config` del clon.
 
 ## Reporte al chat (mínimo, formato fijo)

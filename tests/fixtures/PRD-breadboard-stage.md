@@ -14,7 +14,7 @@ path: greenfield
 # PRD en etapa breadboard
 
 ## 1. Problema / Por qué
-No hay listado.
+No hay listado. Evidencia: SO-90 (12 asesores).
 
 ## 2. Objetivo / Resultado
 Que exista.

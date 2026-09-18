@@ -1,6 +1,6 @@
 ---
 name: prd
-description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira), como recorrido GUIADO por etapas con compuertas (encuadre → breadboard → diseño → cierre) o en una pasada si el insumo ya está completo. Funda el análisis en el cerebro (read-only), congela el alcance en texto ANTES del Figma (mapa módulo → pantalla → acción), acota (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD", "seguimos con el PRD de X", "revisá este PRD", "qué nota le das al PRD". Produce un archivo local PRD-<slug>.md (no toca el cerebro).
+description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira), como recorrido GUIADO por etapas con compuertas (encuadre → breadboard → diseño → cierre) o en una pasada si el insumo ya está completo. Funda el análisis en el cerebro (read-only), congela el alcance en texto ANTES del Figma (mapa módulo → pantalla → acción), acota (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD", "seguimos con el PRD de X", "revisá este PRD", "qué nota le das al PRD", "/prd --lite" para un ajuste chico. Produce un archivo local PRD-<slug>.md (no toca el cerebro).
 ---
 
 # /argos-product:prd — PRD estandarizado, por etapas
@@ -67,6 +67,20 @@ qué orden se escribe: `standards/prd.md` (sección *Orden de trabajo*, RFC-003)
   **Resumen para Dev** arriba.
 - Valido con el check completo: `prd-check.sh PRD-<slug>.md` → `status: ready` solo sin huecos, sin `open` y sin marcadores.
 - Cierro con `review`: el puntaje va al frontmatter del PRD (`review_score`) para que el intake lo muestre.
+
+## `--lite` — el camino corto (one-pager)
+Disparadores: "/prd --lite", "es un ajuste chico", "un bugfix de producto", "no quiero un PRD entero para esto".
+Un bugfix, un copy o una regla puntual no merece nueve secciones. Arranco de `${CLAUDE_PLUGIN_ROOT}/templates/prd-lite.md`
+(frontmatter `lite: true`): Problema **con evidencia** · Qué cambia · Fuera de alcance · Criterios Dado/cuando/entonces ·
+Dependencias. `prd-check` exige solo eso. Sale como **una historia directa** a Jira (MCP de Atlassian, con tu OK),
+sin intake. Si al escribirlo aparecen tres pantallas o dos roles, no era lite: paso al PRD completo y lo digo.
+
+## Evidencia con procedencia (§1 no es una opinión)
+Cada afirmación del problema cita **de dónde sale**: bugs y tickets de Jira, TCs del QA, findings del cerebro, chunks
+del RAG (`/argos-product:rag`), tickets de soporte, o un dato con tamaño ("34 pólizas en septiembre"). Si no hay fuente,
+la frase va como supuesto marcado, no como hecho. `prd-check` avisa cuando §1 no cita nada; `review` puntúa la
+dimensión *Evidencia*. Antes de redactar §1 busco evidencia en el RAG y en los bugs de Jira del área — es lo que las
+herramientas que mejor escriben PRDs traen debajo del texto.
 
 ## Marcadores de ambigüedad (en cualquier etapa)
 Lo que no sé **no lo asumo ni lo escondo en §7**: lo dejo marcado en el lugar exacto del texto con

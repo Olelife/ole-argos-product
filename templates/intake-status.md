@@ -20,6 +20,7 @@ updated: <YYYY-MM-DD>
 # deploy_env: <INT | staging-mx | staging-br>
 # source_intake: intakes/<slug>    # intake origen (adaptación de mercado)
 # roadmap_artifact_url / avance_artifact_url: los escriben los verbos al publicar
+# confluence_page_id / confluence_url: los escribe el verbo publicar
 ---
 
 # Intake · <título>

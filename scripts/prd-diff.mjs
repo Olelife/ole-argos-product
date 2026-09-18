@@ -9,7 +9,7 @@
 //
 //   default: el PRD del intake contra su versión en git (--from HEAD, o el rev que se pase).
 //   --write: agrega la sección "## Cambios vN (fecha)" a <intakeDir>/changelog-prd.md (se crea si falta).
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, realpathSync } from 'node:fs';
 import { join, basename, relative, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { readMaybe, parseFrontmatter } from './lib/md.mjs';
@@ -22,7 +22,7 @@ let oldText, newText, label;
 if (opt('--old') && opt('--new')) {
   oldText = readFileSync(opt('--old'), 'utf8'); newText = readFileSync(opt('--new'), 'utf8'); label = `${basename(opt('--old'))} → ${basename(opt('--new'))}`;
 } else {
-  const dir = args[0];
+  const dir = args[0] && !args[0].startsWith('--') && existsSync(args[0]) ? realpathSync(args[0]) : args[0];
   if (!dir || dir.startsWith('--')) { console.error('uso: prd-diff.mjs <intakeDir> [--from <rev>] | --old <a.md> --new <b.md>'); process.exit(1); }
   const fm = parseFrontmatter(readMaybe(join(dir, 'STATUS.md')));
   const slug = fm.slug || basename(dir);
