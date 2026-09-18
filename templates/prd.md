@@ -9,6 +9,8 @@ date: <YYYY-MM-DD>
 country: <MX | BR | ...>
 capability: <kebab-en>     # debe matchear o referenciar un architecture/flows/<capability>.md del cerebro
 figma: <url o "—">
+stage: encuadre            # etapa alcanzada del recorrido guiado: encuadre | breadboard | diseno | cierre (RFC-003)
+path: greenfield           # greenfield (alcance en texto ANTES del Figma) | retro (PRD sobre un diseño ya hecho)
 ---
 
 # <título>
@@ -31,6 +33,15 @@ figma: <url o "—">
 ## 4. 🚫 Fuera de alcance
 <!-- Lo que explícitamente NO se hace en este PRD. Mata el scope creep. Sé específico. -->
 -
+
+## 5.0 Mapa: módulo → pantallas → acciones (breadboard)
+<!-- Solo palabras y líneas, sin wireframes (Shape Up). Es la COMPUERTA DE ALCANCE: cuando esta tabla está
+     completa y aprobada, el alcance queda congelado en texto, antes del Figma. Obligatoria con path: greenfield;
+     recomendada con path: retro. Cada fila es candidata a criterio en §6; la columna Roles arma la matriz de §5;
+     todo "→ fuera del mapa" obliga a una fila en §4 (fuera) o §9 (dependencia) — nunca queda implícito. -->
+| Pantalla (*place*) | Acción (*affordance*) | Para qué | Roles | Efecto | ¿Se extiende a? |
+|---|---|---|---|---|---|
+| <pantalla> | <acción> | <valor para el usuario> | <roles> | <qué pasa> | `cierra` · `→ <pantalla del mapa>` · `→ <módulo/sistema fuera del mapa>` |
 
 ## 5. Comportamiento de producto
 <!-- El corazón del PRD. Por cada flujo: estados, reglas de negocio, validaciones, permisos,

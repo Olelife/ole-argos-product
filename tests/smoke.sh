@@ -22,7 +22,7 @@ hasnt(){ grep -qF -- "$2" "$1" && fail "$3 — apareció '$2' en $(basename "$1"
 echo "🗿 smoke test del Motor de Producto (fixture: sample-intake)"
 
 node "${ROOT}/scripts/index-update.mjs" "${DATA}" >/dev/null
-has "${DATA}/INDEX.md" "| 1 / 3 | 1 / 3 |" "INDEX: 1/3 dudas abiertas y 1/3 historias cerradas (meta Jira)"
+has "${DATA}/INDEX.md" "| 1 / 4 | 1 / 3 |" "INDEX: 1/4 dudas abiertas y 1/3 historias cerradas (meta Jira)"
 
 node "${ROOT}/scripts/index-widget.mjs" "${DATA}" >/dev/null
 has "${DATA}/INDEX-widget.html" '"storiesClosed":1' "index widget: cuenta historias cerradas"
@@ -69,7 +69,7 @@ has "${INTAKE}/stories.md" "| S2 | Ver el histórico | 🟡 | Ready to Prod | SO
 
 node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" --date 2026-09-18 >/dev/null
 has "${INTAKE}/STATUS.md" "- **Historias:** 2 cerradas / 3 totales · 3 en Jira" "status-render: conteos tras el sync"
-has "${INTAKE}/STATUS.md" "- **Dudas:** 1 abiertas / 3 totales (1 aplicadas al PRD · 0 resueltas · 1 descartadas)" "status-render: dudas por estado"
+has "${INTAKE}/STATUS.md" "- **Dudas:** 1 abiertas / 4 totales (1 aplicadas al PRD · 1 resueltas · 1 descartadas)" "status-render: dudas por estado"
 has "${INTAKE}/STATUS.md" "updated: 2026-09-18" "status-render: fecha desde el agente"
 has "${INTAKE}/STATUS.md" "fixture mínimo que ejercita" "status-render: conserva la prosa del PM"
 node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" >/dev/null
@@ -78,7 +78,34 @@ node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" >/dev/null
 node "${ROOT}/scripts/intake-lint.mjs" "${INTAKE}" > "${TMP}/lint.out" && ok "intake-lint: fixture sin errores" || fail "intake-lint: el fixture no debería tener errores"
 has "${TMP}/lint.out" "roadmap: todas las historias de las fases existen" "intake-lint: cruza roadmap ↔ índice"
 node "${ROOT}/scripts/index-update.mjs" "${DATA}" >/dev/null
-has "${DATA}/INDEX.md" "| 1 / 3 | 2 / 3 |" "INDEX: refleja las 2 cerradas tras el sync"
+has "${DATA}/INDEX.md" "| 1 / 4 | 2 / 3 |" "INDEX: refleja las 2 cerradas tras el sync"
+
+node "${ROOT}/scripts/dashboard-gen.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/dashboard.html" "cdn.jsdelivr.net/npm/mermaid" "dashboard: renderiza el .mmd en el navegador cuando no hay PNG"
+has "${INTAKE}/dashboard.html" 'class="mermaid"' "dashboard: embebe la fuente Mermaid"
+
+node "${ROOT}/scripts/findings-scan.mjs" "${INTAKE}" --brain "${ROOT}/tests/fixtures/brain" > "${TMP}/scan.out"
+has "${TMP}/scan.out" "1 sin registrar en el decision-log" "findings-scan: detecta el finding no registrado"
+hasnt "${TMP}/scan.out" "RQ-260801-unrelated" "findings-scan: ignora findings de otros intakes"
+hasnt "${TMP}/scan.out" "RQ-260905-already-logged" "findings-scan: omite los ya citados en el decision-log"
+node "${ROOT}/scripts/findings-scan.mjs" "${INTAKE}" --brain "${ROOT}/tests/fixtures/brain" --apply --date 2026-09-18 >/dev/null
+has "${INTAKE}/decision-log.md" "| 5 | **Reconciliación con el cerebro:** La exportación a Excel se quitó" "findings-scan --apply: agrega la fila con el id siguiente"
+has "${INTAKE}/decision-log.md" "| cerebro findings/RQ-260910-sample-export-dropped.md | abierta |" "findings-scan --apply: fuente y estado"
+node "${ROOT}/scripts/findings-scan.mjs" "${INTAKE}" --brain "${ROOT}/tests/fixtures/brain" > "${TMP}/scan2.out"
+has "${TMP}/scan2.out" "0 sin registrar" "findings-scan: idempotente tras aplicar"
+
+node "${ROOT}/scripts/test-map.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/test-map.md" "| 1. Listado | 2 | 1 | SO-101 | 🟢 |" "test-map: sección mapeada por key en el CSV"
+has "${INTAKE}/test-map.md" "| 2. Histórico | 1 | 1 | SO-102 | 🟠 1 sin confirmar |" "test-map: S<n> resuelto a key + sin confirmar"
+has "${INTAKE}/test-map.md" "| 3. Exportar | 1 | 0 | — | ⚪ sin historia |" "test-map: sección sin historia"
+node "${ROOT}/scripts/test-map.mjs" "${INTAKE}" >/dev/null
+[ "$(grep -c '^<!-- argos:auto -->' "${INTAKE}/test-map.md")" = "1" ] && ok "test-map: idempotente" || fail "test-map: duplicó el bloque auto"
+
+bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-breadboard-stage.md" --stage=breadboard > "${TMP}/bb.out" || true
+has "${TMP}/bb.out" 'se extiende a "Logalty"' "prd-check --stage=breadboard: detecta el → externo sin resolver"
+hasnt "${TMP}/bb.out" 'se extiende a "Excel"' "prd-check --stage=breadboard: el → externo cubierto en §4 pasa"
+hasnt "${TMP}/bb.out" "falta sección: Preguntas abiertas" "prd-check --stage=breadboard: no exige etapas posteriores"
+bash "${ROOT}/scripts/prd-check.sh" "${ROOT}/tests/fixtures/PRD-breadboard-stage.md" --stage=encuadre --strict >/dev/null && ok "prd-check --stage=encuadre: pasa con §1 §2" || fail "prd-check --stage=encuadre debería pasar"
 
 echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

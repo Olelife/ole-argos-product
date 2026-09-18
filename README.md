@@ -8,15 +8,15 @@ sin sobrecargarte de preguntas.
 ## Qué hace
 | Comando | Hace |
 |---|---|
-| `/argos-product:prd` | crea o refina un **PRD suelto** (`PRD-<slug>.md` local) a partir de tu insumo (borrador, Figma, ticket) |
+| `/argos-product:prd` | crea o refina un **PRD suelto** (`PRD-<slug>.md` local), como recorrido guiado por etapas (encuadre → breadboard → diseño → cierre, RFC-003) o en una pasada |
 | `/argos-product:prd-mercado` | PRD de **adaptación de mercado** (llevar una capability a otro país), con lint y export a Word |
-| `/argos-product:intake` | gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** + decision-log + historias + dashboard + roadmap + handoff idempotente a Jira (con CSV de importación como fallback) + `sync` del estado real de Jira a `stories.md` |
+| `/argos-product:intake` | gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** + decision-log + historias + dashboard + roadmap + handoff idempotente a Jira (con CSV de importación como fallback) + `sync` del estado real de Jira a `stories.md` + `reconciliar` findings del cerebro → decision-log + `tests` (casos de prueba del QA) |
 | `/argos-product:avance` | tablero de **avance** y proyección de cierre, corte fresco desde Jira, publicado como Artifact |
-| `/argos-product:rag` | memoria histórica de Producto (Bedrock KB) con citas al markdown fuente |
+| `/argos-product:rag` | memoria histórica de Producto (Bedrock KB, `Retrieve` + redacción con citas al markdown fuente); `similares` y `auditar` se enganchan en `/intake` |
 | `/argos-product:setup` | clona el cerebro recortado (read-only) y el repo de datos `ole-argos-product-data` (read-write) |
 | `/argos-product:version` · `update` | versión instalada vs publicada · actualizar el plugin |
 
-Lee el cerebro **solo para fundamentar** (domain, flows, glossary); **nunca lo modifica**.
+Lee el cerebro **solo para fundamentar** (domain, flows, findings, glossary); **nunca lo modifica**.
 
 ## Instalar
 ```bash

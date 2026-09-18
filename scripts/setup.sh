@@ -4,7 +4,8 @@ set -euo pipefail
 # setup.sh — onboarding de Argos-Producto (lo corre /argos-product:setup).
 #
 # Baja el cerebro (ole-argos-brain) RECORTADO (sparse-checkout) y SOLO PARA LECTURA:
-# por defecto domain/, architecture/flows/ y glossary.md — nada de findings/, services/, specs/ (interno de Dev).
+# por defecto domain/, architecture/flows/, findings/ (para reconciliar el PRD con lo que Dev decidió) y glossary.md —
+# nada de services/ ni specs/ (interno de Dev).
 # Producto NO escribe el cerebro (lo cura Dev); el read-only real lo da el PERMISO de GitHub.
 # El PRD se crea como archivo LOCAL en tu carpeta de trabajo; no hay repo de salida.
 
@@ -18,7 +19,7 @@ CONFIG_FILE="${OLE_CONFIG:-${WORKSPACE}/config.local.conf}"
 OLE_REPOS="${OLE_REPOS:-${WORKSPACE}/repos}"
 ORG="${OLE_GH_ORG:-Olelife}"
 BRAIN="ole-argos-brain"
-SPARSE="${OLE_BRAIN_SPARSE:-/domain/ /architecture/flows/ /glossary.md /README.md}"
+SPARSE="${OLE_BRAIN_SPARSE:-/domain/ /architecture/flows/ /findings/ /glossary.md /README.md}"
 EXAMPLE="${MOTOR}/config.example.conf"
 : "${GIT_SSH_COMMAND:=ssh -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o BatchMode=yes}"
 export GIT_SSH_COMMAND

@@ -28,6 +28,30 @@ Un PRD listo (`status: ready`) tiene, sin huecos:
 6. **Preguntas abiertas** — toda definición pendiente, con dueño.
 7. **Contexto complementario** — lo que ayuda a entender pero NO se construye.
 
+## Orden de trabajo: el mismo PRD en tres pasadas (RFC-003)
+El template dice *qué* secciones existen; esto dice *cuándo* se escribe cada una. Cuatro etapas, tres compuertas;
+el `stage:` del frontmatter guarda hasta dónde llegó el recorrido (`/prd` retoma ahí).
+
+```
+ E0 ENCUADRE        E1 BREADBOARD              E2 DISEÑO            E3 CIERRE
+ §1 §2              §3 §4 §5.0 (+ roles)        el diseñador toma    §5 detalle · §6 · §7
+ "¿este es el       "¿estas son TODAS las       el breadboard como   validaciones · vacíos ·
+  problema?"         pantallas y acciones?"     brief; Argos verifica errores · microcopy ·
+                     ── ACÁ SE CONGELA ──       cobertura acción↔frame  catálogo · criterios
+                        EL ALCANCE
+```
+- El **alcance** se cierra en E1, en texto, donde equivocarse cuesta media hora. El **comportamiento** se cierra
+  en E3, porque el diseño siempre descubre reglas que nadie escribió. El diseño puede **detallar** comportamiento;
+  no puede **expandir** alcance (regla de la sección siguiente, con su momento en el proceso).
+- **Breadboard** = tabla módulo → pantalla → acción (§5.0): *places*, *affordances* y a dónde lleva cada acción.
+  Sin wireframes. Toda acción que **se extiende fuera del mapa** obliga a decidir: §4 Fuera de alcance o §9 Dependencia.
+  Es el detector de scope creep.
+- **Anti-interrogatorio**: el árbol es checklist de cobertura, no guion. Con insumo o Figma, las pantallas y acciones
+  se infieren; se pregunta solo la celda vacía, por tanda de pantalla y con default. Lo dudoso va a §7, no frena.
+- **Criterios que no nacen de una acción del usuario** (jobs, cálculos, integraciones): además de Given-When-Then,
+  vale la forma EARS — *"Cuando <evento>, el sistema debe <respuesta>"* — siempre verificable.
+- `path: retro` (PRD sobre un diseño ya hecho): §5.0 es recomendada, no obligatoria; el resto igual.
+
 ## Disciplina de alcance (el dolor que resolvemos)
 - Cada ítem cae en **una** de tres cajas: **En alcance** · **Fuera de alcance** · **Contexto complementario**.
 - Ante la duda, **se pregunta** ("¿esto es parte de la funcionalidad o es complementario?") — no se asume.

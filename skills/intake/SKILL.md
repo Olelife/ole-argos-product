@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
+description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
 ---
 
 # /argos-product:intake — intake versionado
@@ -32,6 +32,7 @@ Disparadores: `/argos-product:intake` **sin slug**, "listar intakes", "qué inta
 ### `nuevo` — abrir un intake
 Disparadores: "nuevo intake de…", "abrí el intake …", con un PRD (archivo/link) y/o un Figma.
 1. **Slug**: kebab-case corto y estable (ej. `cotizaciones-petra`). Confirmo si es ambiguo.
+   **Pre-flight (si `RAG_KB_ID` está configurado):** corro `/argos-product:rag similares "<título + resumen del insumo>"` y muestro hasta 5 intakes parecidos con su estado. Si uno cubre lo mismo, propongo **sumarse** (versión nueva de ese intake) en vez de abrir otro; el PM decide.
 2. **Scaffold**: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/intake-new.sh" <slug> "<título>"` — crea `intakes/<slug>/` desde los templates (STATUS, PRD, decision-log, stories, analysis/, figma/).
 3. **Congelar Figma** (ver *Congelado del Figma* abajo) → `figma/v1/`.
 4. **Redactar el PRD**: aplico el flujo de `/prd` (standard + `templates/prd.md`) sobre `intakes/<slug>/PRD-<slug>.md`, fundado en el cerebro (read-only) y anclado a una `capability`.
@@ -60,7 +61,7 @@ Disparadores: "mostrame el intake X", "cómo va X".
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
 
 ### `roadmap` — entregable visual del plan de ejecución (RFC-002)
-Disparadores: "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
+Disparadores: "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
 Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia. Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
 1. **Prerequisito**: el `stories.md` debe tener la sección `## Orden de ejecución · roadmap por fase` con un H3 por fase y una tabla `Historia | Título | Ready?`. Si falta, el script genera igual el HTML **con un banner de warning** que guía a pegar `templates/stories-roadmap-section.md` del motor.
 2. **Datos que consume** (todos del intake, sin Jira ni servicios externos):
@@ -75,16 +76,34 @@ Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista
 El tablero de avance y la proyección de cierre son un skill propio con **contrato de frescura** (cada corte se reconstruye desde Jira). Si me lo piden desde acá, lo derivo: `/argos-product:avance <slug>`. Ese skill, además, deja `stories.md` y `STATUS.md` al día (verbo `sync`).
 
 ### `sync` — traer el estado real de Jira a `stories.md`
-Disparadores: "sincronizá las historias de X con Jira", "actualizá el estado de las historias de X", "qué historias de X ya cerraron".
+Disparadores: "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "actualizá el estado de las historias de X", "qué historias de X ya cerraron".
 1. **Snapshot desde Jira** (MCP Atlassian, sin heredar nada de cortes previos): `searchJiraIssuesUsingJql` con `("Epic Link" in (<jira_epics>) OR parent in (<jira_epics>)) AND issuetype = Historia`, fields `key, status, summary, labels`. Lo guardo como JSON `{ "issues": [ { "key", "status", "summary", "labels" } ] }` en el scratchpad (mismo shape que el input de `/avance`).
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/stories-sync.mjs" "intakes/<slug>" <snapshot.json>` → escribe `Estado Jira` (y `Jira` si la historia se reconoce por su label `intake-<slug>-s<n>`), pasa `Estado` a `en-Jira`/`cerrada` según `jira_goal_status`, y reporta **movimientos**, historias sin dato y issues de Jira sin fila. Nunca infiero por título.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/status-render.mjs" "intakes/<slug>" --date <hoy>` → regenera el bloque `<!-- argos:auto -->` de `STATUS.md` (conteos de dudas, historias, versiones, épicas, entregables) y `updated:`.
 4. Si el script sugiere otro `status` del intake (`in-delivery` / `done`), **lo propongo**; lo decide el PM.
 5. Regenero dashboard + INDEX y commiteo (`📝 Intake(<título>): sync Jira — <movimientos>`).
 
+### `reconciliar` — traer al decision-log lo que Dev decidió contra el código
+Disparadores: "reconciliá X con el cerebro", "qué findings hay de X", "el código cambió, ¿el PRD sigue vigente?", "/argos-product:intake reconciliar <slug>".
+El caso que lo motiva: el PRD de cotizaciones seguía pidiendo la caja de comisión que el código había borrado un mes antes, y nada lo trajo de vuelta a Producto. El cerebro (solo lectura, `findings/` en el recorte) registra esas decisiones; este verbo las cruza con el intake.
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/findings-scan.mjs" "intakes/<slug>" [--since <fecha del último reconciliar>]` → lista los findings que mencionan las **keys de Jira** del intake (historias + épicas), su **capability** o su **slug**, y que el decision-log **todavía no cita**. Leo cada uno (son markdown en `repos/ole-argos-brain/findings/`) y resumo en una línea qué decidió Dev y qué parte del PRD toca.
+2. Los que sí afectan al PRD/historias los registro: `findings-scan.mjs "intakes/<slug>" --apply --date <hoy>` agrega una fila `abierta` por finding (fuente `cerebro findings/<archivo>`); después **reescribo la Duda** de cada fila con mi resumen concreto ("Dev quitó X porque Y — ¿el PRD deja de pedirlo?"). Los que no afectan los marco `descartada` con el motivo, así el próximo scan no los vuelve a traer.
+3. Si el finding contradice al PRD y el PM ratifica lo implementado, **el código manda**: aplico el cambio al PRD/historias (`aplicada-al-PRD`) y anoto que el PRD anterior quedó superado — no "drift a cerrar". Si el PM sostiene el PRD, queda `abierta` con dueño Dev y la reporto como finding a curar (nunca toco el cerebro).
+4. Regenero STATUS (`status-render.mjs --date <hoy>`), dashboard + INDEX y commiteo (`📝 Intake(<título>): reconciliación con el cerebro — N findings`).
+5. Lo corro también **al cerrar cada `sync`** cuando aparecen historias nuevas en «Ready to Prod»: es el momento en que Dev dejó decisiones escritas.
+
+### `tests` — casos de prueba del QA como artefacto del intake
+Disparadores: "incorporá los casos de prueba de X", "cruzá los TCs del QA con las historias", "/argos-product:intake tests <slug>".
+1. El QA deja `intakes/<slug>/test-cases.csv` (columnas: `ID · Sección · Caso de prueba · Pasos · Resultado esperado · Prioridad · Sin confirmar`; el orden no importa).
+2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/test-map.mjs" "intakes/<slug>"` → `test-map.md` con la matriz **sección QA ↔ historia(s)**: TCs, cuántos Alta, cuántos «sin confirmar», cobertura (🟢 mapeada · 🟠 con dudas del QA · ⚪ sin historia). Las historias las detecta por menciones de keys/S<n> en el CSV; lo que el CSV no dice lo completo yo en la tabla `## Mapeo sección → historia` del mismo archivo (se conserva entre corridas) y vuelvo a correr.
+3. Cada TC «sin confirmar» es una **duda del QA**: la registro en el decision-log (fuente `QA TC-xxx`) con default propuesto. Las secciones ⚪ son alcance que el QA ve y el PRD no tiene (o al revés) → fila `abierta` de alcance.
+4. Al enriquecer criterios de aceptación con TCs, cito `QA TC-xxx` como sufijo discreto y explico la leyenda **una vez** en la épica (las historias deben entenderse solas, sin el CSV a la vista).
+5. Regenero STATUS + dashboard y commiteo (`📝 Intake(<título>): N casos de prueba del QA mapeados`).
+
 ### `aprobar` — cerrar el borrador y cortar historias
 Disparadores: "aprobá el intake X", "está listo X".
 1. Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" intakes/<slug>/PRD-<slug>.md` (secciones, placeholders, Resumen para Dev, criterios Dado/cuando/entonces por historia, dueños de las preguntas) y `node "${CLAUDE_PLUGIN_ROOT}/scripts/intake-lint.mjs" intakes/<slug>` (frontmatter, estados, dudas citadas que existen, roadmap ↔ índice, PRD §6 ↔ stories, snapshot de Figma). **No apruebo** con errores del lint, obligatorios en hueco, alcance sin acotar ni dudas `abierta` que cambien alcance; los avisos los reporto.
+   **Si `RAG_KB_ID` está configurado**, además corro `/argos-product:rag auditar <slug>`: contradicciones con el cerebro, historias redundantes con otros intakes y precedentes de dudas — **solo sugiere**, no bloquea; lo que el PM acepte va al decision-log con fuente `RAG: <ruta>`.
 2. **Genero el gate** `intakes/<slug>/jira-preview.md` desde `${CLAUDE_PLUGIN_ROOT}/templates/jira-preview.md`, poblándolo con las historias del PRD §6 (título, descripción Como/Quiero/Para + criterios) y los **links de Figma** (mapeo frame→node-id de `figma/vN/structure.json`). El dev revisa/edita ese archivo — **es la fuente desde la que se crea**.
    **Formato obligatorio de cada historia** (aplica también al MCP al crear):
    - **Links de Figma completos** — nunca cito solo el `node-id`. Cada frame va como URL completa clickeable = **URL base del archivo** (de `figma_url.*` en `STATUS.md`) + `?node-id=<node-id-con-guiones>` (los `:` del id se reemplazan por `-`). Markdown: `- [Nombre del frame](<url-completa>)`.

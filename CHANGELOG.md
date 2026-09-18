@@ -2,6 +2,17 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.17.0 — Loop con Dev, RAG fase 2, flujo guiado (RFC-003)
+
+Tanda T3 del plan de mejora (2026-09-18). Lo que Dev decide contra el código vuelve al intake; el RAG deja de depender de una API que la KB no soporta; el PRD deja de ser una plantilla y pasa a ser un recorrido.
+
+- **Verbo `reconciliar`** en `/intake` (`scripts/findings-scan.mjs`): cruza los findings del cerebro (solo lectura) con las keys de Jira, la capability y el slug del intake, omite los que el decision-log ya cita y, con `--apply`, agrega una fila `abierta` por finding. Sobre `modulo-poliza-petra` encontró 71 findings de septiembre sin registrar. El recorte del cerebro (`setup.sh`, `config.example.conf`) suma `findings/`.
+- **RAG fase 2**: `scripts/rag-retrieve.sh` (Retrieve sobre la KB managed, filtros por fuente/slug/tipo derivados de la ruta de S3); el skill `/rag` redacta a partir de los chunks — la KB managed no soporta `RetrieveAndGenerate`. `similares` es pre-flight de `/intake nuevo` y `auditar` paso opcional de `aprobar`. `rag-sync.mjs` reintenta el ingestion job ante `ConflictException` (dos repos sincronizando a la vez).
+- **Dashboard dibuja los `.mmd` en el navegador** (Mermaid por CDN, tema Olé) cuando no hay PNG: el intake ya no depende de Chrome/npx en la máquina que lo generó. `diagrams-gen.sh` usa `mmdc` local si existe, `npx` contra el registry público y detecta Chrome en Linux.
+- **RFC-003 · flujo guiado**: `/prd` en cuatro etapas (encuadre → breadboard → diseño → cierre) con `stage:`/`path:` en el frontmatter y retoma donde quedó; §5.0 **mapa módulo → pantalla → acción** en el template (compuerta de alcance, antes del Figma); `prd-check.sh --stage=<etapa>` valida solo lo que la etapa exige y exige que todo `→ fuera del mapa` esté en §4 o §9; sección *Orden de trabajo* + EARS en el standard. Sin flag, `prd-check` se comporta como siempre.
+- **Verbo `tests`** en `/intake` (`scripts/test-map.mjs`): `test-cases.csv` del QA → `test-map.md` con la matriz sección ↔ historia (TCs, Alta, «sin confirmar», cobertura) y mapeo manual que se conserva.
+- Smoke test cubre findings-scan (detección, apply, idempotencia), test-map, Mermaid en el dashboard y `prd-check --stage`.
+
 ## v1.16.0 — Ciclo que cierra: sync con Jira, STATUS generado, lint del intake, CSV de importación
 
 Tanda T2 del plan de mejora (2026-09-18). Los estados de las historias nunca llegaban a `cerrada` porque la verdad vivía en Jira y nada la traía de vuelta; los conteos del cuerpo de STATUS se escribían a mano y quedaban viejos.

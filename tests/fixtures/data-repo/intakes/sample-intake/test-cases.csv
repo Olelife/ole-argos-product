@@ -1,0 +1,5 @@
+ID,Sección,Caso de prueba,Pasos,Resultado esperado,Prioridad,Sin confirmar
+TC-01,1. Listado,Ver filas,Abrir el listado (SO-101).,Se ven las filas.,Alta,
+TC-02,1. Listado,Ordenar,Click en columna.,Ordena.,Media,
+TC-03,2. Histórico,Ver 12 meses,Abrir histórico (S2).,"Muestra 12 meses, ""a confirmar"".",Alta,Sí
+TC-04,3. Exportar,Bajar archivo,Click exportar.,Descarga.,Baja,

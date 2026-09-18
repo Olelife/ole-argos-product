@@ -6,20 +6,30 @@ set -euo pipefail
 #   · frontmatter (title · epic · status · capability · country)
 #   · "Resumen para Dev" arriba · cada historia de §6 con al menos un criterio Dado/cuando/entonces
 #   · preguntas abiertas con dueño · un PRD `ready` no puede tener huecos ni preguntas `open`
+#   · --stage=<encuadre|breadboard|diseno|cierre> valida SOLO lo que esa etapa exige (RFC-003); sin flag = todo (como siempre).
 # Advisory: sale 0 salvo con --strict (sale 1 si hay ⚠) o si un PRD `ready` tiene huecos (siempre 1).
 # Lo usa /argos-product:prd (paso 8) e /argos-product:intake (verbo aprobar); el CI lo corre en --strict.
 
 FILE="${1:-}"; shift || true
-STRICT=0; [ "${1:-}" = "--strict" ] && STRICT=1
+STRICT=0; STAGE=""
+for a in "$@"; do
+  case "$a" in
+    --strict) STRICT=1 ;;
+    --stage=*) STAGE="${a#--stage=}" ;;
+  esac
+done
 if [ ! -f "${FILE}" ]; then
   echo "Uso: $(basename "$0") PRD-<slug>.md [--strict]" >&2
   exit 1
 fi
 
-PRD_FILE="${FILE}" PRD_STRICT="${STRICT}" python3 - <<'PY'
+PRD_FILE="${FILE}" PRD_STRICT="${STRICT}" PRD_STAGE="${STAGE}" python3 - <<'PY'
 import os, re, sys
 
-path = os.environ['PRD_FILE']; strict = os.environ['PRD_STRICT'] == '1'
+path = os.environ['PRD_FILE']; strict = os.environ['PRD_STRICT'] == '1'; stage = os.environ.get('PRD_STAGE', '')
+STAGES = ['encuadre', 'breadboard', 'diseno', 'cierre']
+if stage and stage not in STAGES:
+    print(f'✗ --stage inválido: {stage} (usá {" | ".join(STAGES)})'); sys.exit(2)
 doc = open(path, encoding='utf-8').read()
 issues, infos = [], []
 flag = issues.append; info = infos.append
@@ -42,23 +52,50 @@ for k in ['title', 'epic', 'status', 'capability', 'country']:
     if not fm.get(k) or re.match(r'^<.*>$', fm.get(k, '')): flag(f'frontmatter: falta {k}')
 status = fm.get('status', '?')
 
-# secciones obligatorias (standards/prd.md)
-def has(sec): return re.search(r'^#+\s.*' + sec, doc, re.M | re.I) is not None
-for sec in ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', 'Comportamiento', '(Historias|Épicas)', 'Preguntas abiertas', 'Contexto complementario']:
+# secciones obligatorias (standards/prd.md) — por etapa si se pidió (RFC-003)
+def has(sec): return re.search(r'^#+\s.*(?:' + sec + ')', doc, re.M | re.I) is not None
+def section(sec):
+    m = re.search(r'^#+\s[^\n]*(?:' + sec + r')[^\n]*\n(.*?)(?=^#+\s|\Z)', doc, re.M | re.S | re.I)
+    return m.group(1) if m else ''
+FULL = ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', 'Comportamiento', '(Historias|Épicas)', 'Preguntas abiertas', 'Contexto complementario']
+BY_STAGE = {'encuadre': ['Problema', 'Objetivo'], 'breadboard': ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', r'5\.0\s+Mapa|5\.0'],
+            'diseno': ['Problema', 'Objetivo', 'En alcance', 'Fuera de alcance', r'5\.0\s+Mapa|5\.0', 'Comportamiento'], 'cierre': FULL}
+for sec in BY_STAGE.get(stage, FULL):
     if not has(sec): flag(f'falta sección: {sec}')
+if stage in ('breadboard', 'diseno'):
+    bb = section(r'5\.0\s+Mapa|5\.0')
+    rows = [r for r in bb.split('\n') if r.strip().startswith('|')][2:]
+    if not rows: flag('§5.0 breadboard sin filas: la compuerta de alcance necesita al menos una pantalla con sus acciones')
+    fuera, deps = section('Fuera de alcance'), section('Dependencias')
+    for r in rows:
+        cells = [c.strip() for c in r.strip().strip('|').split('|')]
+        if len(cells) < 6: continue
+        ext = cells[5].replace('`', '').strip()
+        target = re.sub(r'^→\s*', '', ext).strip()
+        if not ext.startswith('→') or not target: continue
+        pantallas = [c.strip().strip('|').split('|')[0].strip() for c in rows]
+        if any(target.lower() == p.lower() for p in pantallas): continue
+        if target.lower() not in (fuera + deps).lower():
+            flag(f'§5.0: la acción "{cells[1]}" se extiende a "{target}" (fuera del mapa) y no aparece en §4 Fuera de alcance ni en §9 Dependencias')
+if stage == 'diseno' and not re.search(r'figma\.com|frame', doc, re.I): flag('etapa diseño: el PRD no referencia ningún frame de Figma (cobertura acción ↔ frame)')
+if stage and stage != 'cierre':
+    info(f'validación por etapa: {stage} (las secciones de etapas posteriores no se exigen)')
 
 # placeholders / guía
 n_ph = len(re.findall(r'<[A-Za-zÁÉÍÓÚÑáéíóúñ][^>\n]*>|TODO', doc))
 if n_ph: flag(f'{n_ph} placeholder(s) sin completar (<…> / TODO)')
 if '<!--' in doc: flag('quedan comentarios guía <!-- --> sin borrar')
 
+early = stage in ('encuadre', 'breadboard', 'diseno')
 # Resumen para Dev
-if not re.search(r'Resumen para Dev', doc): flag('falta el bloque "Resumen para Dev" arriba (qué se construye · alcance · sub-tareas)')
+if not early and not re.search(r'Resumen para Dev', doc): flag('falta el bloque "Resumen para Dev" arriba (qué se construye · alcance · sub-tareas)')
 
 # historias de §6 con criterios verificables
 stories = re.findall(r'^###\s+((?:EP-[A-Z0-9-]+-)?[SH]\d+[a-z]?)\b[^\n]*\n(.*?)(?=^###\s|^##\s|\Z)', doc, re.M | re.S)
 sin = [sid for sid, body in stories if not re.search(r'^\s*-\s*(\[[ x]\]\s*)?Dad[oa]s?\b.*\b(cuando|entonces)\b', body, re.M | re.I)]
-if stories:
+if early:
+    pass
+elif stories:
     if sin: flag(f'{len(sin)} de {len(stories)} historias sin criterio Dado/cuando/entonces: {", ".join(sin[:6])}{"…" if len(sin) > 6 else ""}')
     else: info(f'{len(stories)} historias, todas con criterios verificables')
 else:
@@ -70,7 +107,7 @@ else:
 # preguntas abiertas: dueño y estado
 q = re.search(r'^#+\s.*Preguntas abiertas.*?\n(.*?)(?=^#+\s|\Z)', doc, re.M | re.S)
 n_open = 0
-if q:
+if q and not early:
     rows = [r for r in q.group(1).split('\n') if r.strip().startswith('|')]
     rows = [r for r in rows[1:] if not re.match(r'^\s*\|[\s:|-]+\|\s*$', r)]
     sin_owner = 0

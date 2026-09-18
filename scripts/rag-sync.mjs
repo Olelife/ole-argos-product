@@ -255,8 +255,20 @@ async function triggerIngestion(kbIdArg) {
     return null;
   }
   const c = new BedrockAgentClient({});
-  const res = await c.send(new StartIngestionJobCommand({ knowledgeBaseId: kbId, dataSourceId }));
-  return res.ingestionJob?.ingestionJobId;
+  // Bedrock serializa los ingestion jobs por data source: si brain y product-data sincronizan casi
+  // a la vez, el segundo recibe ConflictException. Reintentamos con espera en vez de fallar el workflow.
+  const waits = [45_000, 90_000, 120_000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await c.send(new StartIngestionJobCommand({ knowledgeBaseId: kbId, dataSourceId }));
+      return res.ingestionJob?.ingestionJobId;
+    } catch (e) {
+      const conflict = e?.name === 'ConflictException' || /ongoing ingestion job/i.test(e?.message || '');
+      if (!conflict || attempt >= waits.length) throw e;
+      console.error(`⚠ ingestion job en curso en la KB; reintento ${attempt + 1}/${waits.length} en ${waits[attempt] / 1000}s`);
+      await new Promise(r => setTimeout(r, waits[attempt]));
+    }
+  }
 }
 
 // --- Main --------------------------------------------------------------------
