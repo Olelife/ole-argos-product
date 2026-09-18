@@ -1,0 +1,6 @@
+{ "issues": [
+  { "key": "SO-101", "status": "Ready to Prod", "summary": "Ver el listado" },
+  { "key": "SO-102", "status": "Ready to Prod", "summary": "Ver el histórico" },
+  { "key": "SO-103", "status": "En curso", "summary": "Exportar", "labels": ["intake-sample-intake-s3", "phase:2"] },
+  { "key": "SO-199", "status": "Tareas por hacer", "summary": "Algo que no está en el intake" }
+] }

@@ -10,7 +10,7 @@ sin sobrecargarte de preguntas.
 |---|---|
 | `/argos-product:prd` | crea o refina un **PRD suelto** (`PRD-<slug>.md` local) a partir de tu insumo (borrador, Figma, ticket) |
 | `/argos-product:prd-mercado` | PRD de **adaptación de mercado** (llevar una capability a otro país), con lint y export a Word |
-| `/argos-product:intake` | gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** + decision-log + historias + dashboard + roadmap + handoff idempotente a Jira |
+| `/argos-product:intake` | gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** + decision-log + historias + dashboard + roadmap + handoff idempotente a Jira (con CSV de importación como fallback) + `sync` del estado real de Jira a `stories.md` |
 | `/argos-product:avance` | tablero de **avance** y proyección de cierre, corte fresco desde Jira, publicado como Artifact |
 | `/argos-product:rag` | memoria histórica de Producto (Bedrock KB) con citas al markdown fuente |
 | `/argos-product:setup` | clona el cerebro recortado (read-only) y el repo de datos `ole-argos-product-data` (read-write) |
@@ -44,4 +44,4 @@ Standard del PRD: `standards/prd.md`. Template: `templates/prd.md`. Ejemplo: `ex
 ## Desarrollo del Motor
 El Motor cambia por PR a `main` + tag (`scripts/release.sh <patch|minor|major>` bumpea `plugin.json` y `marketplace.json` coherentes).
 El CI corre sintaxis, shellcheck, coherencia de versión, `node --test tests/` y `bash tests/smoke.sh` (todos los generadores sobre el intake fixture de `tests/fixtures/`).
-Los scripts leen `stories.md` / `decision-log.md` **por nombre de columna** y el frontmatter de `STATUS.md` admite bloques anidados y listas — ver `scripts/lib/md.mjs`.
+Validadores: `prd-check.sh` (PRD vs standard), `prd-lint.sh` (PRD de mercado), `intake-lint.mjs` (coherencia del intake). Los scripts leen `stories.md` / `decision-log.md` **por nombre de columna** y el frontmatter de `STATUS.md` admite bloques anidados y listas — ver `scripts/lib/md.mjs`.

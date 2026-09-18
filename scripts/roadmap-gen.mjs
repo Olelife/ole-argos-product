@@ -14,7 +14,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, dudaOpen, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, dudaOpen, esc, DUDAS, stateOf } from './lib/md.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('uso: roadmap-gen.mjs <intakeDir>'); process.exit(1); }
@@ -63,7 +63,7 @@ function parsePhases(md) {
 
 // ── Dudas abiertas
 function openDudas(md) {
-  return parseTable(md, 'Duda').filter(dudaOpen);
+  return DUDAS(md).filter(dudaOpen);
 }
 
 // ── Deriva Ready? del emoji en la celda

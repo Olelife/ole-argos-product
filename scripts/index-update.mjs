@@ -2,7 +2,7 @@
 // index-update.mjs [dataRepo]  → regenera <dataRepo>/INDEX.md escaneando intakes/*/STATUS.md
 import { readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, storyClosed, dudaOpen } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, storyClosed, dudaOpen, DUDAS, stateOf } from './lib/md.mjs';
 
 const data = process.argv[2] || join(process.env.OLE_REPOS || join(process.cwd(), 'repos'), 'ole-argos-product-data');
 const intakesDir = join(data, 'intakes');
@@ -14,7 +14,7 @@ const dirs = readdirSync(intakesDir, { withFileTypes: true })
 const rows = dirs.map(slug => {
   const p = join(intakesDir, slug);
   const fm = parseFrontmatter(readMaybe(join(p, 'STATUS.md')));
-  const dudas = parseTable(readMaybe(join(p, 'decision-log.md')), 'Duda');
+  const dudas = DUDAS(readMaybe(join(p, 'decision-log.md')));
   const stories = parseTable(readMaybe(join(p, 'stories.md')), 'Historia');
   const open = dudas.filter(dudaOpen).length;
   const closed = stories.filter(r => storyClosed(r, fm.jira_goal_status)).length;

@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "mostrame el avance/proyección de cierre de X", "generá el roadmap del intake X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
+description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
 ---
 
 # /argos-product:intake — intake versionado
@@ -45,22 +45,22 @@ Disparadores: "nuevo intake de…", "abrí el intake …", con un PRD (archivo/l
 Disparadores: "respondé la duda N de X", "la duda N es …", "descartá la duda N".
 - Actualizo la fila en `decision-log.md`: respuesta + fecha, estado `resuelta` (o `descartada`).
 - Si la respuesta cambia el PRD/historias, lo aplico y marco la duda `aplicada-al-PRD`.
-- Regenero dashboard + INDEX.
+- Regenero STATUS (`status-render.mjs --date <hoy>`), dashboard + INDEX.
 
 ### `version` — nueva versión del PRD/Figma
 Disparadores: "subí el PRD v2.3", "hay nuevo Figma", "re-analizá X".
 - **Figma**: congelo en `figma/vN+1/` (nunca piso vN) y **diffeo** `structure.json` contra la versión previa → reporto frames añadidos/eliminados/redimensionados; re-capturo los que cambiaron.
 - **PRD**: actualizo el PRD y anoto en el decision-log qué dudas resolvió/creó esta versión.
 - **Re-auditoría**: vuelvo a correr la auditoría de inconsistencias (paso 5 de `nuevo`) sobre lo que cambió; nuevas contradicciones → filas `abierta`.
-- Regenero diagramas afectados (`analysis/`). Bump `prd_version`/`figma_version` en STATUS. Regenero dashboard + INDEX.
+- Regenero diagramas afectados (`analysis/`). Bump `prd_version`/`figma_version` en STATUS y `status-render.mjs --date <hoy>`. Regenero dashboard + INDEX.
 
 ### `ver` — dashboard amigable
 Disparadores: "mostrame el intake X", "cómo va X".
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/dashboard-gen.mjs" <intakes/<slug>>` → escribe `dashboard.html`.
+- `node "${CLAUDE_PLUGIN_ROOT}/scripts/status-render.mjs" <intakes/<slug>>` (conteos al día en STATUS) y `node "${CLAUDE_PLUGIN_ROOT}/scripts/dashboard-gen.mjs" <intakes/<slug>>` → escribe `dashboard.html`.
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
 
 ### `roadmap` — entregable visual del plan de ejecución (RFC-002)
-Disparadores: "generá el roadmap del intake X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
+Disparadores: "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
 Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia. Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
 1. **Prerequisito**: el `stories.md` debe tener la sección `## Orden de ejecución · roadmap por fase` con un H3 por fase y una tabla `Historia | Título | Ready?`. Si falta, el script genera igual el HTML **con un banner de warning** que guía a pegar `templates/stories-roadmap-section.md` del motor.
 2. **Datos que consume** (todos del intake, sin Jira ni servicios externos):
@@ -71,21 +71,20 @@ Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista
 4. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`roadmap_artifact_url`); en corridas siguientes republico sobre esa MISMA URL (paso `url`) para conservar el link ya compartido.
 5. **Cuándo se re-corre**: al cerrar dudas grandes, al agregar/mover historias entre fases, o al cambiar el orden del plan. El HTML es regenerable — nunca se edita a mano.
 
-### `avance` — tablero de avance y proyección de cierre (datos EN VIVO de Jira)
-Disparadores: "porcentaje de avance de X", "cómo va el avance de X", "proyectá el cierre de X", "tablero de estado para stakeholders de X".
-Es distinto de `ver` (que resume el intake): `avance` lee el **estado real de las historias en Jira** y proyecta la fecha de cierre. Es una **foto del momento** — para refrescar, se vuelve a correr.
-1. **Config** (de `STATUS.md` frontmatter, con defaults): `jira_epics` (lista de épicas; sin esto no hay de dónde leer), `jira_goal_status` (meta = "última etapa"; default `Ready to Prod`), `jira_stage_order` (orden del flujo; default `["Tareas por hacer","En curso","Staging","Ready to Prod"]`). Si faltan, uso defaults y **aviso** cuáles asumí.
-2. **Snapshot en vivo** (MCP Atlassian): `searchJiraIssuesUsingJql` con `parent in (<jira_epics>)`, campos acotados (`key`, `status`). Si el resultado excede el límite de tokens, se guarda a archivo → extraigo con `jq` (`.issues.nodes[] | [.key,.fields.status.name]`). Excluyo las descartadas/`Finalizada` que no son alcance vivo.
-3. **Peso (opcional, degradación elegante)**: si Jira trae story points, o el intake tiene pesos por historia, los uso; **si no, modo conteo** (todas pesan igual). El script lo maneja: paso `weight` por historia solo si lo tengo.
-4. **Throughput / proyección**: consulto transiciones a la meta por ventanas — `parent in (…) AND status CHANGED TO "<meta>" AFTER "-Nd" BEFORE "-Md"` en `searchResultMode: count` (respuestas chicas). Con eso estimo el ritmo y armo escenarios (recomiendo el **realista**). **Si el histórico es anómalo** (p. ej. todo concentrado en pocos días por un bulk-update del board), lo reporto como **hallazgo** y NO invento una velocidad sostenida (regla: nunca certezas inventadas).
-5. **Genero**: escribo `input.json` (snapshot + config + escenarios + hallazgo + riesgos que redacto yo del análisis) y corro
-   `node "${CLAUDE_PLUGIN_ROOT}/scripts/avance-gen.mjs" "intakes/<slug>" <input.json>` → escribe `avance.html`. El script calcula (% DoD por conteo y por peso, ponderado por etapa, fechas de los escenarios) y renderiza; yo no hago la aritmética.
-6. **Publico como Artifact** con ese HTML. Guardo la URL en `STATUS.md` (`avance_artifact_url`); en corridas siguientes **republico sobre esa MISMA URL** (paso `url`) para conservar el link que ya compartieron los stakeholders.
-7. **Nota honesta en el reporte**: el % oficial es el **DoD** (alcance en la meta); el ponderado es termómetro interno, no avance. El artefacto es una foto — si el usuario quiere "siempre al día", ofrezco agendarlo (schedule/loop) para re-correr el verbo.
+### `avance` → vive en `/argos-product:avance`
+El tablero de avance y la proyección de cierre son un skill propio con **contrato de frescura** (cada corte se reconstruye desde Jira). Si me lo piden desde acá, lo derivo: `/argos-product:avance <slug>`. Ese skill, además, deja `stories.md` y `STATUS.md` al día (verbo `sync`).
+
+### `sync` — traer el estado real de Jira a `stories.md`
+Disparadores: "sincronizá las historias de X con Jira", "actualizá el estado de las historias de X", "qué historias de X ya cerraron".
+1. **Snapshot desde Jira** (MCP Atlassian, sin heredar nada de cortes previos): `searchJiraIssuesUsingJql` con `("Epic Link" in (<jira_epics>) OR parent in (<jira_epics>)) AND issuetype = Historia`, fields `key, status, summary, labels`. Lo guardo como JSON `{ "issues": [ { "key", "status", "summary", "labels" } ] }` en el scratchpad (mismo shape que el input de `/avance`).
+2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/stories-sync.mjs" "intakes/<slug>" <snapshot.json>` → escribe `Estado Jira` (y `Jira` si la historia se reconoce por su label `intake-<slug>-s<n>`), pasa `Estado` a `en-Jira`/`cerrada` según `jira_goal_status`, y reporta **movimientos**, historias sin dato y issues de Jira sin fila. Nunca infiero por título.
+3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/status-render.mjs" "intakes/<slug>" --date <hoy>` → regenera el bloque `<!-- argos:auto -->` de `STATUS.md` (conteos de dudas, historias, versiones, épicas, entregables) y `updated:`.
+4. Si el script sugiere otro `status` del intake (`in-delivery` / `done`), **lo propongo**; lo decide el PM.
+5. Regenero dashboard + INDEX y commiteo (`📝 Intake(<título>): sync Jira — <movimientos>`).
 
 ### `aprobar` — cerrar el borrador y cortar historias
 Disparadores: "aprobá el intake X", "está listo X".
-1. Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" intakes/<slug>/PRD-<slug>.md` — no apruebo con obligatorios en hueco ni alcance sin acotar ni dudas `abierta` que cambien alcance.
+1. Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" intakes/<slug>/PRD-<slug>.md` (secciones, placeholders, Resumen para Dev, criterios Dado/cuando/entonces por historia, dueños de las preguntas) y `node "${CLAUDE_PLUGIN_ROOT}/scripts/intake-lint.mjs" intakes/<slug>` (frontmatter, estados, dudas citadas que existen, roadmap ↔ índice, PRD §6 ↔ stories, snapshot de Figma). **No apruebo** con errores del lint, obligatorios en hueco, alcance sin acotar ni dudas `abierta` que cambien alcance; los avisos los reporto.
 2. **Genero el gate** `intakes/<slug>/jira-preview.md` desde `${CLAUDE_PLUGIN_ROOT}/templates/jira-preview.md`, poblándolo con las historias del PRD §6 (título, descripción Como/Quiero/Para + criterios) y los **links de Figma** (mapeo frame→node-id de `figma/vN/structure.json`). El dev revisa/edita ese archivo — **es la fuente desde la que se crea**.
    **Formato obligatorio de cada historia** (aplica también al MCP al crear):
    - **Links de Figma completos** — nunca cito solo el `node-id`. Cada frame va como URL completa clickeable = **URL base del archivo** (de `figma_url.*` en `STATUS.md`) + `?node-id=<node-id-con-guiones>` (los `:` del id se reemplazan por `-`). Markdown: `- [Nombre del frame](<url-completa>)`.
@@ -106,7 +105,7 @@ Disparadores: "aprobá el intake X", "está listo X".
    - Fuente de verdad para el valor: `STATUS.md` frontmatter (campos opcionales `base_branch:` y `deploy_env:`). Si no están en el STATUS, pregunto al usuario antes de emitir; no invento.
 
 3. **STATUS** = `ready`. Congelo la versión del PRD/Figma.
-4. **Handoff a Jira — con GATE + IDEMPOTENCIA.** Espero tu **confirmación explícita** antes de crear nada. La escritura usa el **MCP de Atlassian**; si no está disponible en el runtime, **no invento**: dejo `jira-preview.md` como fallback listo para pegar (ver [[atlassian-mcp-runtime-vs-cli]]). Nunca creo en masa sin tu OK.
+4. **Handoff a Jira — con GATE + IDEMPOTENCIA.** Espero tu **confirmación explícita** antes de crear nada. La escritura usa el **MCP de Atlassian** (probá `atlassianUserInfo` antes de darlo por caído). Si no responde, **no invento**: genero el CSV importable con `node "${CLAUDE_PLUGIN_ROOT}/scripts/jira-import.mjs" intakes/<slug>` (solo las historias pendientes, con sus labels únicos; épica incluida si el STATUS aún no tiene `jira_epics`; descripción en wiki de Jira, `--markdown` para dejarla tal cual) y el PM lo importa desde Jira. Nunca creo en masa sin tu OK.
 
 ### Creación idempotente (nunca duplica)
 Cada issue lleva un **label único** de trazabilidad: la épica `intake-<slug>-epic`, cada historia `intake-<slug>-s<n>`. Antes de crear **cualquier** issue, chequeo **doble llave**:
@@ -136,5 +135,5 @@ El congelado combina el MCP de Figma (lo llamo yo) + `figma-freeze.mjs` (mecáni
 - **No apruebo** (`ready`) con alcance sin acotar u obligatorios con hueco.
 - **Jira con gate**: jamás creo/muevo issues sin confirmación explícita tuya.
 - **Cero secretos** en el intake (solo *nombres*).
-- **El markdown es la verdad**; el dashboard/Artifact es presentación regenerable.
+- **El markdown es la verdad**; el dashboard/Artifact es presentación regenerable. Los **conteos del cuerpo de `STATUS.md`** (bloque `<!-- argos:auto -->`) también: los escribe `status-render.mjs`, nunca a mano — la prosa del PM va fuera del bloque.
 - **Commit del repo de datos**: al cerrar cada verbo, dejo el cambio commiteado en `ole-argos-product-data` con un mensaje claro (no push directo si el repo tuviera protección; hoy va a `main`).

@@ -131,10 +131,18 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
    - Si no está → publico nuevo, guardo la URL en `STATUS.md` (`avance_artifact_url`) y
      lo committeo junto con el HTML.
 
-7. **Commit + push** al repo de datos, en `main`:
+7. **Sync de `stories.md` y `STATUS.md` con el mismo snapshot** (sin volver a consultar Jira):
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/stories-sync.mjs" "intakes/<slug>" <scratchpad>/avance-input.json
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/status-render.mjs" "intakes/<slug>" --date <capturedAt>
+   ```
+   El primero escribe `Estado Jira` por historia y deriva `cerrada`; el segundo regenera los conteos
+   del bloque auto de STATUS. Si el sync sugiere `in-delivery`/`done`, lo propongo al PM.
+
+8. **Commit + push** al repo de datos, en `main`:
    - Mensaje: `📊 Avance(<title-corto>): <resumen de movimientos>` (una línea, imperativo).
      Ej: `📊 Avance(Módulo Póliza): SO-930/SO-931 a Staging; SO-1033/SO-1036 en curso`.
-   - `git add intakes/<slug>/avance.html` (+ `STATUS.md` si actualicé el URL).
+   - `git add intakes/<slug>/avance.html intakes/<slug>/stories.md intakes/<slug>/STATUS.md`.
    - Autor: nombre + email del `git config` del clon.
 
 ## Reporte al chat (mínimo, formato fijo)
@@ -179,7 +187,6 @@ URL del Artifact y el hash del commit. Nada más.
 
 ## Interacción con `/argos-product:intake`
 
-El verbo `avance` de `/argos-product:intake` sigue existiendo por compatibilidad, pero
-delega su implementación a este skill: si me llaman desde `/intake`, aplico el mismo
-contrato de frescura. En una futura versión mayor, el verbo se remueve de `/intake` y
-queda solo `/argos-product:avance`.
+`/argos-product:intake` ya no implementa `avance`: deriva acá. El verbo `sync` de `/intake`
+usa los mismos dos scripts del paso 7 con un snapshot propio, para poner al día las historias
+sin publicar tablero.
