@@ -103,10 +103,36 @@ export function parseTableNamed(text, headerIncludes) {
   return { headers: headers || [], rows };
 }
 
-// Compatibilidad: filas como arrays (los generadores nuevos usan col()).
+// Filas de la PRIMERA tabla que matchea (índice de historias: las tablas del roadmap también tienen "Historia").
 export function parseTable(text, headerIncludes) {
   return parseTableNamed(text, headerIncludes).rows;
 }
+
+// Filas de TODAS las tablas cuyo header matchea, concatenadas. Un decision-log largo se parte en
+// varias tablas (una por tanda / bump del PRD) y los conteos tienen que sumarlas.
+export function parseTablesAll(text, headerIncludes) {
+  const rows = [];
+  let headers = null, inTable = false;
+  for (const l of text.split('\n')) {
+    if (/^\s*\|/.test(l)) {
+      const cells = l.split('|').slice(1, -1).map(c => c.trim());
+      if (!inTable) {
+        inTable = true;
+        headers = (!headerIncludes || cells.join(' ').toLowerCase().includes(headerIncludes.toLowerCase())) ? cells.map(normalizeHeader) : null;
+        continue;
+      }
+      if (!headers) continue;
+      if (cells.every(c => /^:?-{2,}:?$/.test(c.replace(/\s/g, '')))) continue;
+      if (cells.some(c => c.length)) { cells.headers = headers; rows.push(cells); }
+    } else { inTable = false; headers = null; }
+  }
+  return rows;
+}
+
+export const DUDAS = text => parseTablesAll(text, 'Duda');
+
+// Estado normalizado de una celda: sin negritas ni backticks, en minúsculas.
+export const stateOf = cell => String(cell || '').replace(/[*`_]/g, '').trim().toLowerCase().replace(/\s+/g, '-');
 
 // Lee una celda por nombre de columna. Acepta varios alias; prioridad: igual > empieza con > contiene.
 export function col(row, ...names) {
@@ -152,14 +178,13 @@ export function jiraKey(cell) {
 
 // Una historia está cerrada si su estado local lo dice, o si su estado en Jira alcanzó la meta.
 export function storyClosed(row, goalStatus) {
-  const st = STORY.state(row).toLowerCase();
-  if (st === 'cerrada') return true;
-  const js = STORY.jiraState(row).toLowerCase();
-  return !!goalStatus && !!js && js === String(goalStatus).toLowerCase();
+  if (stateOf(STORY.state(row)) === 'cerrada') return true;
+  const js = stateOf(STORY.jiraState(row));
+  return !!goalStatus && !!js && js === stateOf(goalStatus);
 }
 
 export function dudaOpen(row) {
-  return DUDA.state(row).toLowerCase().includes('abierta');
+  return stateOf(DUDA.state(row)).startsWith('abierta');
 }
 
 export function jiraBaseOf(fm, override) {

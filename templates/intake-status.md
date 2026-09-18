@@ -23,8 +23,8 @@ updated: <YYYY-MM-DD>
 
 # Intake · <título>
 
-**Resumen:** <1-2 líneas de qué es y en qué estado está>.
+<!-- argos:auto -->
+(lo regenera scripts/status-render.mjs: dudas · historias · versiones · épicas · entregables)
+<!-- /argos:auto -->
 
-- **Dudas:** <abiertas>/<total> abiertas
-- **Historias:** <cerradas>/<total> cerradas
-- **Última versión:** PRD <prd_version> · Figma <figma_version>
+**Resumen:** <1-2 líneas de qué es y en qué estado está — la prosa del PM va acá, fuera del bloque auto>.

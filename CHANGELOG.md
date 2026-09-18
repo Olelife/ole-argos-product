@@ -2,6 +2,19 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.16.0 — Ciclo que cierra: sync con Jira, STATUS generado, lint del intake, CSV de importación
+
+Tanda T2 del plan de mejora (2026-09-18). Los estados de las historias nunca llegaban a `cerrada` porque la verdad vivía en Jira y nada la traía de vuelta; los conteos del cuerpo de STATUS se escribían a mano y quedaban viejos.
+
+- **Verbo `sync`** en `/intake` (`scripts/stories-sync.mjs`): escribe en `stories.md` el `Estado Jira` real y el key (reconocido por el label `intake-<slug>-s<n>`), deriva `Estado` a `en-Jira`/`cerrada` según `jira_goal_status`, reporta movimientos, historias sin dato e issues sin fila, y sugiere el estado del intake. `/avance` corre el mismo sync con su snapshot antes de commitear.
+- **`STATUS.md` con bloque auto** (`scripts/status-render.mjs`): dudas por estado, historias cerradas/en Jira, versiones con links de Figma, épicas, entregables y base técnica entre `<!-- argos:auto -->` … `<!-- /argos:auto -->`; la prosa del PM queda fuera. `--date` actualiza `updated:`.
+- **`scripts/intake-lint.mjs`**: esquema del frontmatter (obligatorias, `status` válido, keys de Jira, URLs), estados de dudas e historias, dudas citadas que existen, roadmap ↔ índice, PRD §6 ↔ `stories.md`, snapshots de Figma. Errores salen 1; `--strict` también con avisos. El verbo `aprobar` no aprueba con errores.
+- **`prd-check.sh` real**: frontmatter, "Resumen para Dev", criterios Dado/cuando/entonces por historia, dueño en las preguntas abiertas, `ready` sin huecos ni `open`; deriva los PRDs de adaptación de mercado a `prd-lint.sh`; `--strict` para CI.
+- **`scripts/jira-import.mjs`**: `jira-import.csv` desde `jira-preview.md` (solo pendientes, labels únicos, épica o `Parent` = key del STATUS, Markdown → wiki de Jira). Codifica el fallback que antes se armaba a mano cuando el MCP de Atlassian no responde.
+- Decision-logs con **varias tablas** (una por tanda) ahora se suman en todos los conteos (`DUDAS()`); estados con negrita/espacios se normalizan (`aplicada al PRD` = `aplicada-al-PRD`).
+- El verbo `avance` sale de `/intake` (deriva a `/argos-product:avance`, anunciado en v1.12).
+- Template de STATUS con el bloque auto; smoke test cubre los 5 scripts nuevos.
+
 ## v1.15.0 — Confiabilidad: parser, contrato de columnas, CI
 
 Tanda T1 del plan de mejora (2026-09-18). Nada de lo que prometían los generadores se sostenía contra los 9 intakes reales; esta versión lo arregla y pone la red que lo hubiera atrapado.

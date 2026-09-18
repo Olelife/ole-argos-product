@@ -51,8 +51,34 @@ has "${INTAKE}/avance.html" "1 de 3 historias" "avance: DoD por conteo"
 has "${INTAKE}/avance.html" "argos-product:avance" "avance: footer cita el skill vigente"
 has "${INTAKE}/avance.html" "olelife.atlassian.net/browse/SO-150" "avance: bug linkeado con host correcto"
 
-out="$(bash "${ROOT}/scripts/prd-check.sh" "${INTAKE}/PRD-sample-intake.md")"
-echo "${out}" | grep -q "Estructura completa" && ok "prd-check: fixture pasa" || fail "prd-check: el fixture debería pasar"
+bash "${ROOT}/scripts/prd-check.sh" "${INTAKE}/PRD-sample-intake.md" --strict >/dev/null && ok "prd-check --strict: fixture pasa" || fail "prd-check --strict: el fixture debería pasar"
+
+node "${ROOT}/scripts/jira-import.mjs" "${INTAKE}" >/dev/null
+has "${INTAKE}/jira-import.csv" '"Story","[Muestra] Exportar el listado"' "jira-import: incluye la historia pendiente"
+hasnt "${INTAKE}/jira-import.csv" "Ver el listado" "jira-import: omite la historia ya creada"
+has "${INTAKE}/jira-import.csv" "intake-sample-intake-s3" "jira-import: conserva el label único"
+has "${INTAKE}/jira-import.csv" '"SO-100"' "jira-import: cuelga de la épica del STATUS"
+has "${INTAKE}/jira-import.csv" "_Como_ asesor _quiero_ exportar *el listado*" "jira-import: markdown → wiki de Jira"
+has "${INTAKE}/jira-import.csv" "[Listado|https://www.figma.com" "jira-import: links en formato wiki"
+
+node "${ROOT}/scripts/stories-sync.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/jira-snapshot.json" > "${TMP}/sync.out"
+has "${TMP}/sync.out" "SO-102    Staging → Ready to Prod" "stories-sync: reporta el movimiento"
+has "${TMP}/sync.out" "sin fila en stories.md: SO-199" "stories-sync: detecta issues huérfanos"
+has "${INTAKE}/stories.md" "| S3 | Exportar | 🚧 (bloqueada · duda #1) | En curso | [SO-103](https://olelife.atlassian.net/browse/SO-103) | — |" "stories-sync: key por label + Estado Jira, resto intacto"
+has "${INTAKE}/stories.md" "| S2 | Ver el histórico | 🟡 | Ready to Prod | SO-102 | — |" "stories-sync: no reescribe celdas que no cambian"
+
+node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" --date 2026-09-18 >/dev/null
+has "${INTAKE}/STATUS.md" "- **Historias:** 2 cerradas / 3 totales · 3 en Jira" "status-render: conteos tras el sync"
+has "${INTAKE}/STATUS.md" "- **Dudas:** 1 abiertas / 3 totales (1 aplicadas al PRD · 0 resueltas · 1 descartadas)" "status-render: dudas por estado"
+has "${INTAKE}/STATUS.md" "updated: 2026-09-18" "status-render: fecha desde el agente"
+has "${INTAKE}/STATUS.md" "fixture mínimo que ejercita" "status-render: conserva la prosa del PM"
+node "${ROOT}/scripts/status-render.mjs" "${INTAKE}" >/dev/null
+[ "$(grep -c '^<!-- argos:auto -->' "${INTAKE}/STATUS.md")" = "1" ] && ok "status-render: idempotente (un solo bloque auto)" || fail "status-render: duplicó el bloque auto"
+
+node "${ROOT}/scripts/intake-lint.mjs" "${INTAKE}" > "${TMP}/lint.out" && ok "intake-lint: fixture sin errores" || fail "intake-lint: el fixture no debería tener errores"
+has "${TMP}/lint.out" "roadmap: todas las historias de las fases existen" "intake-lint: cruza roadmap ↔ índice"
+node "${ROOT}/scripts/index-update.mjs" "${DATA}" >/dev/null
+has "${DATA}/INDEX.md" "| 1 / 3 | 2 / 3 |" "INDEX: refleja las 2 cerradas tras el sync"
 
 echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

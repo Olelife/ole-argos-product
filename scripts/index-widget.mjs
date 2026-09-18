@@ -3,7 +3,7 @@
 // Una tarjeta por intake (estado, dudas, historias) con botones que retoman el intake vía sendPrompt.
 import { readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, storyClosed, dudaOpen, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, storyClosed, dudaOpen, esc, DUDAS, stateOf } from './lib/md.mjs';
 
 const data = process.argv[2] || join(process.env.OLE_REPOS || join(process.cwd(), 'repos'), 'ole-argos-product-data');
 const intakesDir = join(data, 'intakes');
@@ -15,7 +15,7 @@ const dirs = readdirSync(intakesDir, { withFileTypes: true })
 const items = dirs.map(slug => {
   const p = join(intakesDir, slug);
   const fm = parseFrontmatter(readMaybe(join(p, 'STATUS.md')));
-  const dudas = parseTable(readMaybe(join(p, 'decision-log.md')), 'Duda');
+  const dudas = DUDAS(readMaybe(join(p, 'decision-log.md')));
   const stories = parseTable(readMaybe(join(p, 'stories.md')), 'Historia');
   return {
     slug, title: fm.title || slug, status: String(fm.status || '—').toLowerCase(),

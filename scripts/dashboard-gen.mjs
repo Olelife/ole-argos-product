@@ -4,13 +4,13 @@
 // La fuente de verdad son los markdown; esto es solo presentación regenerable.
 import { readdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, storyClosed, dudaOpen, figmaUrls, jiraBaseOf, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, storyClosed, dudaOpen, figmaUrls, jiraBaseOf, esc, DUDAS, stateOf } from './lib/md.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('uso: dashboard-gen.mjs <intakeDir>'); process.exit(1); }
 
 const fm = parseFrontmatter(readMaybe(join(dir, 'STATUS.md')));
-const dudas = parseTable(readMaybe(join(dir, 'decision-log.md')), 'Duda');
+const dudas = DUDAS(readMaybe(join(dir, 'decision-log.md')));
 const stories = parseTable(readMaybe(join(dir, 'stories.md')), 'Historia');
 
 const dudasOpen = dudas.filter(dudaOpen).length;
