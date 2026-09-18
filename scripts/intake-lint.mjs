@@ -8,7 +8,7 @@
 //   ⚠ aviso  → drift o dato dudoso que el PM debería mirar (sale 0; con --strict sale 1)
 import { existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, asList, figmaUrls, jiraKey, DUDAS, stateOf } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, asList, figmaUrls, jiraKey, DUDAS, stateOf, col } from './lib/md.mjs';
 
 const args = process.argv.slice(2);
 const dir = args[0];
@@ -89,6 +89,14 @@ if (!isTransversal) {
     const k = STORY.jira(r); if (k) { if (keys.has(k)) err(`stories: key ${k} repetida en ${keys.get(k)} y ${id}`); keys.set(k, id); }
   }
   dupS.length ? err(`stories: ids duplicados: ${dupS.join(', ')}`) : (stories.length && ok(`stories: ${stories.length} historias con ids únicos`));
+  const prios = stories.map(r => col(r, 'prioridad').toUpperCase().trim()).filter(Boolean);
+  if (prios.length) {
+    const bad = prios.filter(p => !/^P[0-2]$/.test(p));
+    if (bad.length) warn(`stories: prioridades fuera de P0/P1/P2: ${[...new Set(bad)].join(', ')}`);
+    const p0 = prios.filter(p => p === 'P0').length;
+    if (p0 > prios.length / 2) warn(`stories: ${p0}/${prios.length} historias son P0 — si todo es P0, nada es P0; bajá lo que puede esperar`);
+    else ok(`stories: prioridades declaradas (${p0} P0 de ${prios.length})`);
+  }
   if (badS.length) warn(`stories: estados fuera de {propuesta, en-Jira, en-RQ, cerrada, descartada}: ${badS.slice(0, 5).join(' ')}${badS.length > 5 ? '…' : ''}`);
   if (badK.length) err(`stories: celdas Jira que no son un key: ${badK.slice(0, 5).join(' ')}`);
 

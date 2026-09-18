@@ -61,6 +61,7 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
      historia descartada o forzar orden.
    - **`jira_goal_status`** (default `Ready to Prod`) — meta.
    - **`jira_stage_order`** (default `["Tareas por hacer","En curso","Staging","Ready to Prod"]`).
+   - **`target_date`** (opcional) — fecha comprometida con stakeholders; alimenta el semáforo del Monte Carlo.
    - **`avance_artifact_url`** (opcional) — si existe, republico ese Artifact
      (los stakeholders ya tienen el link).
 
@@ -103,6 +104,17 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
 
    Un bug se cuenta como **abierto** si `status ∉ {"Ready to Prod","Desestimado"}`.
 
+3b. **Serie semanal de throughput (para el Monte Carlo)** — para cada una de las últimas 8–12 semanas (más si el
+   histórico es corto y ruidoso), una JQL en `searchResultMode: count`:
+   ```
+   ("Epic Link" in (<jira_epics>) OR parent in (<jira_epics>)) AND issuetype = Historia
+     AND status CHANGED TO "<jira_goal_status>" AFTER "-<n+1>w" BEFORE "-<n>w"
+   ```
+   → `throughputWeekly: [c_12, …, c_1]` (la más vieja primero). **Semanas con 0 cuentan** (son parte del ritmo real).
+   Si el histórico tiene un bulk-update (todo en una semana), lo reporto como hallazgo y **no** lo saco de la serie:
+   el Monte Carlo lo muestrea como lo que fue. Con menos de 4 semanas no hay simulación y quedan los escenarios.
+   Si el STATUS tiene `target_date:`, la paso como `targetDate` → el tablero muestra la probabilidad de llegar y el semáforo.
+
 4. **Armo `input.json` desde cero** (ver schema en `scripts/avance-gen.mjs`):
    - `capturedAt` = fecha de hoy (del sistema).
    - `project`, `epics`, `stageOrder` desde el STATUS.
@@ -110,6 +122,7 @@ con `/argos-product:avance <slug>` o cualquier frase natural que lo pida.
      - `key`, `status`, `assignee`, `summary` traídos de Jira.
      - `bugs = {total, open, keys[], openKeys[], items[{key,status,assignee,summary,open}]}` armado del mapa BUGS.
    - `jiraBase = "https://olelife.atlassian.net"`.
+   - `throughputWeekly` y `targetDate` (paso 3b).
    - `finding.title` y `finding.body` los redacto yo con los **movimientos reales** del
      corte: promociones, regresiones, bugs nuevos, cambios de dueño, bugs cerrados. Uso el
      `input.json` previo del scratchpad **solo** para calcular el diff que va al `finding`
@@ -162,6 +175,9 @@ Bugs con cambio de estado o dueño
 Bugs nuevos (aparecieron en este corte)
   SO-yyyy [texto] → SO-xxx                Estado                        [Asignee]
   …
+
+Pronóstico (Monte Carlo · N semanas · media X/sem)
+  P50 dd-mmm · P85 dd-mmm · P95 dd-mmm   [objetivo dd-mmm: XX% · verde/ámbar/rojo]
 
 Estado por historia
   Ready to Prod    X / N   (X.X% conteo · X.X% ponderado)

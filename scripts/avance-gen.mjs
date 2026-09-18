@@ -13,8 +13,11 @@
 //   "issues": [ {"key":"SO-672","status":"Ready to Prod","weight":3,"summary":"…","assignee":"…",
 //               "bugs":{"total":6,"open":1,"openKeys":["SO-805"],"keys":["SO-802",…]}}, ... ], // bugs opcional (vínculos tipo Error)
 //   "jiraBase": "https://olelife.atlassian.net",  // opcional: base para los links de las historias
-//   "throughputRecentPerWeek": 10,         // opcional: ritmo reciente a la meta (hist/sem)
-//   "scenarios": [ {"name":"B · Realista","cond":"…","ratePerWeek":4.5,"best":true}, … ], // opcional
+//   "throughputWeekly": [3,0,5,2,4,1,6,2],  // opcional: historias que llegaron a la meta por semana (las últimas N semanas,
+//                                          //   la más vieja primero). Con ≥4 semanas se corre Monte Carlo (P50/P70/P85/P95).
+//   "targetDate": "2026-10-31",            // opcional: fecha comprometida → semáforo RAG contra la probabilidad de llegar
+//   "throughputRecentPerWeek": 10,         // opcional: ritmo reciente a la meta (hist/sem) — fallback sin serie semanal
+//   "scenarios": [ {"name":"B · Realista","cond":"…","ratePerWeek":4.5,"best":true}, … ], // opcional (fallback)
 //   "finding": {"title":"…","body":"…","stats":[{"k":"→ Staging 14d","v":"37"}, …]},      // opcional
 //   "risks": [ {"tag":"Validación","title":"…","detail":"…"}, … ]                          // opcional
 // }
@@ -94,6 +97,31 @@ scenarios = (scenarios || []).map(s => {
 });
 const best = scenarios.find(s => s.best) || scenarios[Math.floor(scenarios.length / 2)];
 
+// ---------- Monte Carlo sobre el throughput semanal histórico ----------
+// Muestrea semanas reales con reemplazo hasta agotar el restante; 10.000 corridas; semilla fija por corte
+// (misma foto → mismo pronóstico). Sin serie (o con menos de 4 semanas) no se inventa: quedan los escenarios.
+function mulberry32(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const weekly = (D.throughputWeekly || []).map(Number).filter(n => Number.isFinite(n) && n >= 0);
+let mc = null;
+if (weekly.length >= 4 && remN > 0 && weekly.some(n => n > 0)) {
+  const seedStr = String(D.capturedAt || '') + remN; let seed = 0; for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = mulberry32(seed || 1);
+  const RUNS = 10000, CAP = 520; const weeksNeeded = [];
+  for (let r = 0; r < RUNS; r++) { let left = remN, w = 0; while (left > 0 && w < CAP) { left -= weekly[Math.floor(rnd() * weekly.length)]; w++; } weeksNeeded.push(w); }
+  weeksNeeded.sort((a, b) => a - b);
+  const pct_ = q => weeksNeeded[Math.min(RUNS - 1, Math.floor(q * RUNS))];
+  const P = { 50: pct_(0.5), 70: pct_(0.7), 85: pct_(0.85), 95: pct_(0.95) };
+  const hist = {}; for (const w of weeksNeeded) hist[w] = (hist[w] || 0) + 1;
+  const avg = weekly.reduce((a, b) => a + b, 0) / weekly.length;
+  let target = null;
+  if (D.targetDate && D.capturedAt) {
+    const wk = Math.max(0, (new Date(D.targetDate + 'T00:00:00Z') - new Date(D.capturedAt + 'T00:00:00Z')) / (7 * 86400000));
+    const prob = weeksNeeded.filter(w => w <= wk).length / RUNS;
+    target = { date: D.targetDate, weeks: Math.round(wk * 10) / 10, prob: Math.round(prob * 100), rag: prob >= 0.85 ? 'green' : prob >= 0.6 ? 'amber' : 'red' };
+  }
+  mc = { P, hist, weeksSample: weekly.length, avg: Math.round(avg * 10) / 10, target, dates: Object.fromEntries(Object.entries(P).map(([k, w]) => [k, D.capturedAt ? addWeeks(D.capturedAt, w) : '—'])) };
+}
+
 // ---------- render ----------
 const barSegs = buckets.concat(unmapped.n ? [unmapped] : [])
   .filter(b => b.n > 0)
@@ -156,6 +184,24 @@ const risksBlock = (D.risks && D.risks.length) ? `
       ${D.risks.map(r => `<div class="risk"><div class="chip">${esc(r.tag)}</div><div class="body"><b>${esc(r.title)}</b><p>${esc(r.detail)}</p></div></div>`).join('')}
     </div>
   </section>` : '';
+
+const mcBlock = mc ? (() => {
+  const ws = Object.keys(mc.hist).map(Number).sort((a, b) => a - b);
+  const maxN = Math.max(...Object.values(mc.hist));
+  const bars = ws.filter(w => w <= mc.P[95] + 2).map(w => `<div class="hb" title="${w} sem: ${(mc.hist[w] / 100).toFixed(1)}%"><span style="height:${Math.max(2, Math.round(mc.hist[w] / maxN * 64))}px;background:${w <= mc.P[50] ? '#1D9E75' : w <= mc.P[85] ? '#B0731A' : '#C63E29'}"></span><i>${w}</i></div>`).join('');
+  const rows = [50, 70, 85, 95].map(q => `<tr><td>P${q}</td><td class="tnum">${mc.P[q]} sem</td><td class="tnum" style="color:var(--accent);font-weight:600">${esc(mc.dates[q])}</td><td class="dim">${q === 50 ? 'la mitad de las corridas termina antes' : q === 85 ? 'compromiso razonable' : q === 95 ? 'casi seguro' : 'probable'}</td></tr>`).join('');
+  const tgt = mc.target ? `<div class="callout ${mc.target.rag === 'green' ? '' : 'warn'}" style="margin-top:14px"><p class="h"><span class="rag ${mc.target.rag}"></span>Fecha comprometida ${esc(mc.target.date)}: <b>${mc.target.prob}%</b> de probabilidad de llegar</p><p>${mc.target.rag === 'green' ? 'Riesgo bajo: el histórico alcanza con margen.' : mc.target.rag === 'amber' ? 'Riesgo medio: hace falta sostener el mejor ritmo del histórico o recortar alcance.' : 'Riesgo alto: al ritmo histórico no se llega; hay que recortar alcance o mover la fecha.'}</p></div>` : '';
+  return `
+  <section>
+    <h2>Pronóstico probabilístico</h2>
+    <p class="lede">Monte Carlo: 10.000 corridas que muestrean las últimas <b>${mc.weeksSample}</b> semanas reales de llegada a «${esc(goal)}» (promedio ${mc.avg} hist/sem) hasta agotar las <b>${remN}</b> historias restantes. No asume un ritmo: usa el que hubo.</p>
+    <div class="card">
+      <div class="mcgrid"><div><table><thead><tr><th>Percentil</th><th>Semanas</th><th>Fecha</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div><div class="histo">${bars}</div><p class="hint">Semanas hasta terminar · verde ≤ P50 · ámbar ≤ P85 · rojo &gt; P85</p></div></div>
+      ${tgt}
+    </div>
+  </section>`;
+})() : '';
 
 const projBlock = scenarios.length ? `
   <section>
@@ -254,6 +300,14 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
   .bug .bsm{flex:1 1 40%;min-width:0;color:var(--muted)}
   .bug .basg{flex:none;color:var(--ink);font-size:11px;font-weight:500;padding:1px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
   .hint{font-size:12.5px;color:var(--faint);margin:8px 0 0}
+  .mcgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  @media(max-width:640px){.mcgrid{grid-template-columns:1fr}}
+  .histo{display:flex;align-items:flex-end;gap:3px;height:84px;padding:4px 0 0}
+  .hb{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex:1;min-width:6px;height:100%}
+  .hb span{display:block;width:100%;border-radius:2px 2px 0 0}
+  .hb i{font-style:normal;font-size:9px;color:var(--faint);margin-top:2px;font-family:var(--font-mono)}
+  .rag{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .rag.green{background:#1D9E75}.rag.amber{background:#B0731A}.rag.red{background:#C63E29}
   .scen{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:640px){.scen{grid-template-columns:1fr}}
   .sc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative}
@@ -297,7 +351,7 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
       <div class="arow"><span class="k">Historias activas</span><span class="v tnum">${totalN}</span></div>
       <div class="arow"><span class="k">Terminadas («${esc(goal)}»)</span><span class="v tnum" style="color:#1D9E75">${done.n}</span></div>
       <div class="arow"><span class="k">Pendientes de cerrar</span><span class="v tnum">${remN}</span></div>
-      ${best ? `<div class="arow"><span class="k">Cierre estimado (${esc((best.name || '').split('·').pop().trim())})</span><span class="v" style="color:var(--accent)">${bestDate}</span></div>` : ''}
+      ${mc ? `<div class="arow"><span class="k">Cierre P85 (Monte Carlo)</span><span class="v" style="color:var(--accent)">${esc(mc.dates[85])}</span></div>` : best ? `<div class="arow"><span class="k">Cierre estimado (${esc((best.name || '').split('·').pop().trim())})</span><span class="v" style="color:var(--accent)">${bestDate}</span></div>` : ''}
     </div>
   </section>
 
@@ -314,9 +368,9 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
     </div>
     <p class="hint">Tocá una etapa para ver sus historias.</p>
   </section>
-${projBlock}${findingBlock}${risksBlock}
+${mcBlock}${projBlock}${findingBlock}${risksBlock}
   <footer>
-    <p><b>Cómo leer este reporte.</b> El avance se mide como porcentaje del alcance que cumple la Definition of Done (aquí, «${esc(goal)}»); el número «con crédito parcial» es un termómetro interno y no el avance oficial. ${footWeights} La proyección es por escenarios de ritmo.</p>
+    <p><b>Cómo leer este reporte.</b> El avance se mide como porcentaje del alcance que cumple la Definition of Done (aquí, «${esc(goal)}»); el número «con crédito parcial» es un termómetro interno y no el avance oficial. ${footWeights} ${mc ? 'El pronóstico es Monte Carlo sobre el throughput semanal real; los percentiles son probabilidades, no promesas.' : 'La proyección es por escenarios de ritmo.'}</p>
     <p><b>Fuente:</b> Jira${D.project ? ` proyecto ${esc(D.project)}` : ''}${D.epics && D.epics.length ? `, épicas ${D.epics.map(esc).join(', ')}` : ''}, corte ${esc(D.capturedAt || '—')}. Generado por el skill <code>argos-product:avance</code>.</p>
   </footer>
 </div>
@@ -347,4 +401,5 @@ writeFileSync(join(dir, 'avance.html'), html);
 console.log(`✓ avance: ${join(dir, 'avance.html')}`);
 console.log(`  ${totalN} historias · ${done.n} en «${goal}» (${dodCount}% conteo${hasWeights ? `, ${dodPts}% peso` : ''}) · ponderado ~${hasWeights ? weightedPts : weightedCount}%`);
 if (unmapped.n) console.log(`  ⚠ ${unmapped.n} con estado sin mapear en stageOrder: ${unmapped.keys.join(', ')}`);
-if (best) console.log(`  cierre (${best.name}): ${best.date} (${best.weeks} sem @ ${best.ratePerWeek}/sem)`);
+if (mc) console.log(`  Monte Carlo (${mc.weeksSample} sem · ${mc.avg}/sem): P50 ${mc.dates[50]} · P85 ${mc.dates[85]} · P95 ${mc.dates[95]}${mc.target ? ` · objetivo ${mc.target.date}: ${mc.target.prob}% (${mc.target.rag})` : ''}`);
+else if (best) console.log(`  cierre (${best.name}): ${best.date} (${best.weeks} sem @ ${best.ratePerWeek}/sem)`);

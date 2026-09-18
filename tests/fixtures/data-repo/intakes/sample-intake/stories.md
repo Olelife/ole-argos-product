@@ -27,3 +27,6 @@ Fases por dependencia.
 
 ### S1 · Ver el listado
 **Como** asesor **quiero** ver el listado **para** consultar.
+**Criterios de aceptación:**
+- [ ] Dado un asesor con datos, cuando abre el listado, entonces ve sus filas.
+**Diseño:** [Listado](https://www.figma.com/design/FILEKEY/Archivo?node-id=10-20)

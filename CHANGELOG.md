@@ -2,6 +2,18 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.18.0 — Medir y cuidar: Monte Carlo, Definition of Ready calculada, marcadores, review, deltas del PRD
+
+Tanda T4 (2026-09-18), lo que el bench de mercado mostró que otros hacen mejor y sí vale tomar.
+
+- **Monte Carlo en `/avance`** (`avance-gen.mjs`): con `throughputWeekly` (historias llegadas a la meta por semana, 8–12 semanas) corre 10.000 corridas con semilla fija por corte y muestra **P50/P70/P85/P95** con fecha, histograma y, si el STATUS tiene `target_date`, la probabilidad de llegar con semáforo. Sin serie quedan los escenarios de antes. Referencia: apps de pronóstico probabilístico para Jira.
+- **Definition of Ready calculada** (`stories-ready.mjs`): el `Ready?` de `stories.md` deja de ser un emoji a mano — 🟢 criterios Dado/cuando/entonces + frame de Figma + sin dudas abiertas · 🟡 con dudas · 🟠 falta criterio o frame · 🚧 bloqueada por duda o dependencia sin cerrar. El roadmap lo lee del índice. Referencia: el "readiness checker" de Rovo.
+- **Marcadores de ambigüedad** `[POR DEFINIR: pregunta — dueño]` en el cuerpo del PRD: `prd-check` los cuenta, bloquean el `ready` y `--strict`; `aprobar` exige cero. Referencia: `[NEEDS CLARIFICATION]` de Spec Kit.
+- **`/prd review`**: lectura cualitativa con rúbrica de 5 dimensiones (claridad · alcance · verificabilidad · evidencia · prioridad), puntaje /25 con cita del PRD por dimensión, top 3 correcciones y riesgos que el PRD no nombra (`templates/prd-review.md`). Referencia: la crítica "nivel CPO" de ChatPRD.
+- **Prioridad P0/P1/P2** en `stories.md`; `intake-lint` avisa cuando más de la mitad es P0 (si todo es P0, nada es P0). Referencia: plugin oficial de PM de Anthropic.
+- **`prd-diff.mjs`**: deltas estructurales ADDED / MODIFIED / REMOVED entre versiones del PRD (secciones, reglas `RN-xx`, criterios, historias/casos de uso), desde git; `--write` acumula `changelog-prd.md`. El verbo `version` lo corre. Referencia: delta markers de OpenSpec.
+- Smoke cubre Monte Carlo determinista, readiness, marcadores y diff.
+
 ## v1.17.0 — Loop con Dev, RAG fase 2, flujo guiado (RFC-003)
 
 Tanda T3 del plan de mejora (2026-09-18). Lo que Dev decide contra el código vuelve al intake; el RAG deja de depender de una API que la KB no soporta; el PRD deja de ser una plantilla y pasa a ser un recorrido.

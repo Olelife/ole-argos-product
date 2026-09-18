@@ -1,6 +1,6 @@
 ---
 name: prd
-description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira), como recorrido GUIADO por etapas con compuertas (encuadre → breadboard → diseño → cierre) o en una pasada si el insumo ya está completo. Funda el análisis en el cerebro (read-only), congela el alcance en texto ANTES del Figma (mapa módulo → pantalla → acción), acota (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD", "seguimos con el PRD de X". Produce un archivo local PRD-<slug>.md (no toca el cerebro).
+description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira), como recorrido GUIADO por etapas con compuertas (encuadre → breadboard → diseño → cierre) o en una pasada si el insumo ya está completo. Funda el análisis en el cerebro (read-only), congela el alcance en texto ANTES del Figma (mapa módulo → pantalla → acción), acota (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD", "seguimos con el PRD de X", "revisá este PRD", "qué nota le das al PRD". Produce un archivo local PRD-<slug>.md (no toca el cerebro).
 ---
 
 # /argos-product:prd — PRD estandarizado, por etapas
@@ -65,7 +65,26 @@ qué orden se escribe: `standards/prd.md` (sección *Orden de trabajo*, RFC-003)
   vacíos, errores, catálogo de valores), §6 historias con criterios Given-When-Then (o EARS para lo que no nace
   de una acción del usuario), §7 preguntas abiertas con dueño, §8 complementario, §9 dependencias, y el
   **Resumen para Dev** arriba.
-- Valido con el check completo: `prd-check.sh PRD-<slug>.md` → `status: ready` solo sin huecos ni `open`.
+- Valido con el check completo: `prd-check.sh PRD-<slug>.md` → `status: ready` solo sin huecos, sin `open` y sin marcadores.
+- Cierro con `review`: el puntaje va al frontmatter del PRD (`review_score`) para que el intake lo muestre.
+
+## Marcadores de ambigüedad (en cualquier etapa)
+Lo que no sé **no lo asumo ni lo escondo en §7**: lo dejo marcado en el lugar exacto del texto con
+`[POR DEFINIR: pregunta — dueño]`. `prd-check` los cuenta (informa en `draft`, bloquea en `ready` y en `--strict`);
+la compuerta de `aprobar` exige cero: cada marcador se resuelve o baja a §7 Preguntas abiertas con dueño.
+Al final de cada tanda de preguntas recorro los marcadores, no la memoria.
+
+## `review` — lectura cualitativa con rúbrica y puntaje
+Disparadores: "revisá este PRD", "qué tan listo está el PRD de X", "dale una nota al PRD", `/prd review <PRD.md>`.
+`prd-check` y `prd-lint` son mecánicos; esto es la lectura que haría un CPO. Leo el PRD completo, el standard y las
+slices del cerebro que aplican, y completo `${CLAUDE_PLUGIN_ROOT}/templates/prd-review.md` → `review.md` junto al PRD
+(en un intake, `intakes/<slug>/review.md`; versiones previas quedan en git).
+- **Cinco dimensiones, 1–5 cada una, con cita del PRD como evidencia**: claridad · alcance · verificabilidad ·
+  evidencia · prioridad. Sin cita no hay puntaje.
+- **Prioridad**: si más de la mitad de las historias son P0, la dimensión no pasa de 2 — *si todo es P0, nada es P0*.
+- **Las 3 correcciones que más suben el puntaje** y **los riesgos que el PRD no nombra** (lo que el cerebro o el
+  Figma sugieren y el documento calla). Veredicto: ≥20 listo · 15–19 casi · <15 rehacer.
+- Nunca reescribo el PRD desde el review: propongo, el PM decide; lo aceptado se aplica y se re-corre `prd-check`.
 
 ## El flujo en una pasada (`path: retro` / insumo completo)
 1. **Ingerir**: borrador, Figma, ticket. Identifico la `capability`.

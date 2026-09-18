@@ -5,7 +5,8 @@ set -euo pipefail
 #   · secciones obligatorias · placeholders y comentarios guía sin borrar
 #   · frontmatter (title · epic · status · capability · country)
 #   · "Resumen para Dev" arriba · cada historia de §6 con al menos un criterio Dado/cuando/entonces
-#   · preguntas abiertas con dueño · un PRD `ready` no puede tener huecos ni preguntas `open`
+#   · preguntas abiertas con dueño · marcadores [POR DEFINIR: …] contados (bloquean el ready)
+#   · un PRD `ready` no puede tener huecos, preguntas `open` ni marcadores
 #   · --stage=<encuadre|breadboard|diseno|cierre> valida SOLO lo que esa etapa exige (RFC-003); sin flag = todo (como siempre).
 # Advisory: sale 0 salvo con --strict (sale 1 si hay ⚠) o si un PRD `ready` tiene huecos (siempre 1).
 # Lo usa /argos-product:prd (paso 8) e /argos-product:intake (verbo aprobar); el CI lo corre en --strict.
@@ -33,6 +34,7 @@ if stage and stage not in STAGES:
 doc = open(path, encoding='utf-8').read()
 issues, infos = [], []
 flag = issues.append; info = infos.append
+ready_markers = False
 
 print(f'🗿  Argos valida {path}')
 if re.search(r'^## Anexo A', doc, re.M) and re.search(r'^#+ CU-\d+', doc, re.M):
@@ -81,6 +83,11 @@ if stage == 'diseno' and not re.search(r'figma\.com|frame', doc, re.I): flag('et
 if stage and stage != 'cierre':
     info(f'validación por etapa: {stage} (las secciones de etapas posteriores no se exigen)')
 
+# marcadores de ambigüedad en línea (RFC-003 / Spec Kit): [POR DEFINIR: pregunta — dueño]
+markers = re.findall(r'\[POR DEFINIR:([^\]]*)\]', doc)
+if markers:
+    (flag if status.lower() == 'ready' or strict else info)(f'{len(markers)} marcador(es) [POR DEFINIR] en el cuerpo — cada uno debe resolverse o pasar a Preguntas abiertas antes de ready')
+    if status.lower() == 'ready': ready_markers = True
 # placeholders / guía
 n_ph = len(re.findall(r'<[A-Za-zÁÉÍÓÚÑáéíóúñ][^>\n]*>|TODO', doc))
 if n_ph: flag(f'{n_ph} placeholder(s) sin completar (<…> / TODO)')
@@ -120,7 +127,7 @@ if q and not early:
     if n_open: info(f'{n_open} pregunta(s) en estado open (ok a propósito; resolvé antes de ready)')
 
 # un PRD ready no negocia consigo mismo
-ready_broken = status.lower() == 'ready' and (n_open or n_ph or issues)
+ready_broken = status.lower() == 'ready' and (n_open or n_ph or issues or ready_markers)
 if status.lower() == 'ready' and n_open: flag(f'status ready con {n_open} pregunta(s) open')
 
 info(f'status: {status}')

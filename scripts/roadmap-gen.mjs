@@ -105,7 +105,8 @@ const phaseBlocks = missingSection ? '' : phases.map((p, i) => {
   const cardHtml = p.rows.map(r => {
     const sid = STORY.id(r).replace(/~~/g, '').trim();
     const stitle = STORY.title(r);
-    const ready = readyFromCell(isDiscarded ? '~~' : (STORY.ready(r) || r[2] || ''));
+    const idx = storyIndex.get(sid) || [...storyIndex.values()].find(x => x.id.replace(/^EP-[A-Z0-9-]+-/, '').toUpperCase() === sid.toUpperCase());
+    const ready = readyFromCell(isDiscarded ? '~~' : ((idx && /[🟢🟡🟠🚧]/u.test(idx.ready) ? idx.ready : '') || STORY.ready(r) || r[2] || ''));
     const flags = dudasBloq.get(sid) || [];
     const flagLabels = flags.length
       ? `<div class="hint">🚧 ${flags.map(f => `#${esc(f.id)}`).join(' · ')}</div>` : '';

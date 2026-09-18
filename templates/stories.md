@@ -5,9 +5,12 @@
 
 Estados de historia: `propuesta` · `en-Jira` · `en-RQ` · `cerrada`.
 
-| Historia | Título | Estado | Jira | RQ |
-|----------|--------|--------|------|----|
-| EP-<SLUG>-S1 | <título> | propuesta | — | — |
+Prioridad: `P0` imprescindible para salir · `P1` importante · `P2` deseable. **Si todo es P0, nada es P0** (el lint avisa si más de la mitad lo es).
+`Ready?` lo calcula el motor (`stories-ready.mjs`): 🟢 criterios + frame + sin dudas · 🟡 con dudas abiertas · 🟠 le falta criterio o frame · 🚧 bloqueada.
+
+| Historia | Título | Prioridad | Ready? | Estado | Jira | RQ |
+|----------|--------|-----------|--------|--------|------|----|
+| EP-<SLUG>-S1 | <título> | P0 | 🟠 | propuesta | — | — |
 
 ---
 
