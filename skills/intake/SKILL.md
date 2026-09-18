@@ -19,6 +19,8 @@ Qué es un buen PRD: `standards/prd.md` (lo reutilizo para el PRD de adentro).
 
 Ruta base de datos: `${OLE_REPOS:-<workspace>/repos}/ole-argos-product-data`. Si no está, pido correr `/argos-product:setup`.
 
+**Contrato de datos que respetan los scripts** (`scripts/lib/md.mjs`): las tablas de `stories.md` y `decision-log.md` se leen **por nombre de columna** (`Historia · Título · Estado · Estado Jira · Ready? · Jira · RQ` / `# · Duda · Fuente · Estado · Respuesta · Fecha`), así que puedo agregar o reordenar columnas sin romper los generadores. El frontmatter de `STATUS.md` admite bloques anidados (`figma_url:` con una URL por sección) y listas. Config opcional que los scripts leen: `jira_project`, `jira_base`, `jira_title_prefix`, `jira_epics`, `jira_goal_status`, `jira_stage_order` (documentadas en `templates/intake-status.md`). Una historia cuenta como **cerrada** si `Estado: cerrada` o si su `Estado Jira` alcanzó `jira_goal_status`.
+
 ## Verbos (detecto la intención del pedido)
 
 ### `listar` / `abrir` — ver todos los intakes y elegir uno

@@ -4,7 +4,7 @@
 // La fuente de verdad son los markdown; esto es solo presentación regenerable.
 import { readdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, storyClosed, dudaOpen, figmaUrls, jiraBaseOf, esc } from './lib/md.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('uso: dashboard-gen.mjs <intakeDir>'); process.exit(1); }
@@ -13,11 +13,10 @@ const fm = parseFrontmatter(readMaybe(join(dir, 'STATUS.md')));
 const dudas = parseTable(readMaybe(join(dir, 'decision-log.md')), 'Duda');
 const stories = parseTable(readMaybe(join(dir, 'stories.md')), 'Historia');
 
-const countBy = (rows, idx) => rows.reduce((a, r) => { const k = (r[idx] || '').toLowerCase(); a[k] = (a[k] || 0) + 1; return a; }, {});
-const dudaState = countBy(dudas, 3);
-const dudasOpen = dudaState['abierta'] || 0;
-const storyState = countBy(stories, 2);
-const storiesClosed = storyState['cerrada'] || 0;
+const dudasOpen = dudas.filter(dudaOpen).length;
+const storiesClosed = stories.filter(r => storyClosed(r, fm.jira_goal_status)).length;
+const jiraBase = jiraBaseOf(fm);
+const figmaLinks = figmaUrls(fm);
 
 const pct = (n, t) => t ? Math.round((n / t) * 100) : 0;
 const dudasDone = dudas.length - dudasOpen;
@@ -41,8 +40,11 @@ const badge = (txt, cls) => `<span class="badge ${cls}">${esc(txt)}</span>`;
 const dudaCls = s => ({ 'abierta': 'b-red', 'resuelta': 'b-green', 'aplicada-al-prd': 'b-teal', 'descartada': 'b-grey' }[(s || '').toLowerCase()] || 'b-grey');
 const storyCls = s => ({ 'propuesta': 'b-grey', 'en-jira': 'b-blue', 'en-rq': 'b-amber', 'cerrada': 'b-green' }[(s || '').toLowerCase()] || 'b-grey');
 
-const dudaRows = dudas.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="dim">${esc(r[2])}</td><td>${badge(r[3], dudaCls(r[3]))}</td><td>${esc(r[4] || '')}</td><td class="dim">${esc(r[5] || '')}</td></tr>`).join('');
-const storyRows = stories.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td>${badge(r[2], storyCls(r[2]))}</td><td class="dim">${esc(r[3] || '—')}</td><td class="dim">${esc(r[4] || '—')}</td></tr>`).join('');
+const dudaRows = dudas.map(r => `<tr><td>${esc(DUDA.id(r))}</td><td>${esc(DUDA.text(r))}</td><td class="dim">${esc(DUDA.source(r))}</td><td>${badge(DUDA.state(r), dudaCls(DUDA.state(r)))}</td><td>${esc(DUDA.answer(r))}</td><td class="dim">${esc(DUDA.date(r))}</td></tr>`).join('');
+const jiraCell = r => { const k = STORY.jira(r); return k ? `<a href="${jiraBase}/browse/${esc(k)}">${esc(k)}</a>` : '—'; };
+const stateCell = r => { const st = STORY.state(r) || STORY.jiraState(r) || (STORY.ready(r) ? `ready ${STORY.ready(r)}` : '—'); return badge(st, storyClosed(r, fm.jira_goal_status) ? 'b-green' : storyCls(st)); };
+const storyRows = stories.map(r => `<tr><td class="mono">${esc(STORY.id(r))}</td><td>${esc(STORY.title(r))}</td><td>${stateCell(r)}</td><td class="dim">${jiraCell(r)}</td><td class="dim">${esc(STORY.rq(r) || '—')}</td></tr>`).join('');
+const figmaMeta = figmaLinks.length ? figmaLinks.map(f => `<a href="${esc(f.url)}">${esc(f.key)}</a>`).join(' · ') : (fm.figma_version || '—');
 const figRows = figmaVers.map(f => `<tr><td class="mono">${esc(f.v)}</td><td>${f.n} frames</td><td class="dim">${esc(f.scope)}</td><td class="dim">${esc(f.at)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">sin snapshots</td></tr>';
 
 const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
@@ -75,7 +77,7 @@ const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
 <div class="wrap">
   <h1>${esc(fm.title || basename(dir))}</h1>
   <div>${badge(fm.status || 'draft', 'st b-teal')}</div>
-  <div class="meta"><b>Owner:</b> ${esc(fm.owner || '—')} &nbsp;·&nbsp; <b>Capability:</b> ${esc(fm.capability || '—')} &nbsp;·&nbsp; <b>PRD:</b> ${esc(fm.prd_version || '—')} &nbsp;·&nbsp; <b>Figma:</b> ${esc(fm.figma_version || '—')} &nbsp;·&nbsp; <b>Actualizado:</b> ${esc(fm.updated || '—')}</div>
+  <div class="meta"><b>Owner:</b> ${esc(fm.owner || '—')} &nbsp;·&nbsp; <b>Capability:</b> ${esc(fm.capability || '—')} &nbsp;·&nbsp; <b>PRD:</b> ${esc(fm.prd_version || '—')} &nbsp;·&nbsp; <b>Figma:</b> ${esc(fm.figma_version || '—')} ${figmaLinks.length ? `(${figmaMeta})` : ''} &nbsp;·&nbsp; <b>Actualizado:</b> ${esc(fm.updated || '—')}</div>
 
   <div class="bars">
     <div class="bar"><div class="lbl">Dudas resueltas · ${dudasDone}/${dudas.length}</div><div class="track"><div class="fill" style="width:${pct(dudasDone, dudas.length)}%"></div></div></div>
@@ -87,7 +89,7 @@ const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
   <h2>Dudas · ${dudasOpen} abiertas</h2>
   <div class="scroll"><table><tr><th>#</th><th>Duda</th><th>Fuente</th><th>Estado</th><th>Respuesta / decisión</th><th>Fecha</th></tr>${dudaRows || '<tr><td colspan="6" class="dim">sin dudas</td></tr>'}</table></div>
 
-  <h2>Historias</h2>
+  <h2>Historias · ${storiesClosed}/${stories.length} cerradas</h2>
   <div class="scroll"><table><tr><th>Historia</th><th>Título</th><th>Estado</th><th>Jira</th><th>RQ</th></tr>${storyRows || '<tr><td colspan="5" class="dim">sin historias</td></tr>'}</table></div>
 
   <h2>Figma congelado</h2>

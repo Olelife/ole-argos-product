@@ -20,7 +20,7 @@
 // }
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, jiraBaseOf, esc } from './lib/md.mjs';
 
 const dir = process.argv[2];
 const inPath = process.argv[3];
@@ -34,7 +34,7 @@ const D = JSON.parse(readFileSync(inPath, 'utf8'));
 const stageOrder = D.stageOrder && D.stageOrder.length ? D.stageOrder : ['Tareas por hacer', 'En curso', 'Staging', 'Ready to Prod'];
 const goal = stageOrder[stageOrder.length - 1];
 const issues = (D.issues || []).filter(i => i && i.status);
-const jiraBase = (D.jiraBase || 'https://olelife.atlassian.net').replace(/\/+$/, '');
+const jiraBase = jiraBaseOf(fm, D.jiraBase);
 const hasWeights = issues.some(i => typeof i.weight === 'number' && i.weight > 0);
 const w = i => hasWeights ? (typeof i.weight === 'number' && i.weight > 0 ? i.weight : 1) : 1;
 
@@ -317,7 +317,7 @@ const html = `<title>${esc(title)} — Avance del proyecto</title>
 ${projBlock}${findingBlock}${risksBlock}
   <footer>
     <p><b>Cómo leer este reporte.</b> El avance se mide como porcentaje del alcance que cumple la Definition of Done (aquí, «${esc(goal)}»); el número «con crédito parcial» es un termómetro interno y no el avance oficial. ${footWeights} La proyección es por escenarios de ritmo.</p>
-    <p><b>Fuente:</b> Jira${D.project ? ` proyecto ${esc(D.project)}` : ''}${D.epics && D.epics.length ? `, épicas ${D.epics.map(esc).join(', ')}` : ''}, corte ${esc(D.capturedAt || '—')}. Generado por el skill <code>argos-product:intake</code> (verbo <code>avance</code>).</p>
+    <p><b>Fuente:</b> Jira${D.project ? ` proyecto ${esc(D.project)}` : ''}${D.epics && D.epics.length ? `, épicas ${D.epics.map(esc).join(', ')}` : ''}, corte ${esc(D.capturedAt || '—')}. Generado por el skill <code>argos-product:avance</code>.</p>
   </footer>
 </div>
 <script>
