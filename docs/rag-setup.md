@@ -30,7 +30,8 @@ si esto sirve.
       │  · vectores → tu RDS/Aurora con pgvector
       ▼
 [4] Skill /argos-product:rag preguntar   ← código en el motor
-      │  consumiendo la KB vía RetrieveAndGenerate
+      │  scripts/rag-retrieve.sh (Retrieve) + el agente redacta con citas
+      │  (la KB managed NO soporta RetrieveAndGenerate ni filtros de metadata)
       ▼
 [5] GATE del POC · 10-20 queries reales
       · ¿la respuesta cita el PRD correcto?
@@ -227,7 +228,7 @@ Por cada repo:
 | `RAG_S3_BUCKET`       | Secret  | `olelife-pilot-corpus`                                          |
 | `RAG_S3_PREFIX`       | Secret  | `brain` (en brain) · `product` (en product-data)                |
 | `RAG_KB_ID`           | Secret  | `<knowledgeBaseId>:<dataSourceId>`                              |
-| `RAG_MOTOR_TAG`       | Var     | `v1.13.0` (bump cuando saque nueva versión del motor)           |
+| `RAG_MOTOR_TAG`       | Var     | `v1.17.0` (bump cuando saque nueva versión del motor)           |
 | `RAG_MOTOR_TOKEN`     | Secret  | (opcional) PAT si el motor pasa a privado; default: github.token |
 
 ### Primera corrida
@@ -265,7 +266,12 @@ de habilitar el workflow.
 
 ## Consumo desde el skill (paso 4 del POC)
 
-Una vez que el KB tiene un ingestion-job exitoso:
+Una vez que el KB tiene un ingestion-job exitoso, con `RAG_KB_ID` en `config.local.conf` y credenciales
+de AWS con `bedrock:Retrieve` sobre la KB (`aws sts get-caller-identity` tiene que responder):
+
+```
+bash scripts/rag-retrieve.sh "¿qué findings tenemos sobre módulo póliza?" --k 8 --type finding
+```
 
 ```
 /argos-product:rag ¿qué findings tenemos sobre módulo póliza?

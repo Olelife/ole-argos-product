@@ -11,7 +11,7 @@ name: rag-sync
 #   RAG_S3_PREFIX        · prefijo por repo (ej. brain o product)
 #   RAG_KB_ID            · <knowledgeBaseId>:<dataSourceId>  (opcional; sin esto no se
 #                           dispara ingestion job, solo se sube a S3)
-#   RAG_MOTOR_TAG        · versión pineada del motor argos-product (ej. v1.13.0)
+#   RAG_MOTOR_TAG        · versión pineada del motor argos-product (ej. v1.17.0)
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Olelife/ole-argos-product
-          ref: ${{ vars.RAG_MOTOR_TAG || 'v1.13.0' }}
+          ref: ${{ vars.RAG_MOTOR_TAG || 'v1.17.0' }}
           path: .argos-product
           token: ${{ secrets.RAG_MOTOR_TOKEN || github.token }}
 

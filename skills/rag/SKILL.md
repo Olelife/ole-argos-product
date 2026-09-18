@@ -13,138 +13,77 @@ Bedrock es solo un índice de búsqueda. Persona y reglas: `CONSTITUTION.md`.
 > Si el corpus no tiene material para responder, digo "no hay material relevante"
 > — nunca invento.
 
-## Dónde vive todo
+## Cómo funciona (Fase 2 · post-POC)
 
-- **Motor** = este plugin (read-only). El skill hace las llamadas al índice.
-- **Corpus indexado** = bucket S3 `${RAG_S3_BUCKET}` con el mirror de:
-  - `ole-argos-brain` (dominio, arquitectura, glossary, findings, RQ cerrados)
-  - `ole-argos-product-data` (intakes: PRDs, decision-logs, historias, análisis)
-- **Índice** = Bedrock Knowledge Base ID `${RAG_KB_ID}` (vector store: Aurora pgvector).
-- **Sync** = GitHub Action `rag-sync.yml` on-push a main de cada repo (usa `scripts/rag-sync.mjs`).
+La KB es **managed**: solo soporta `Retrieve` (ni `RetrieveAndGenerate` ni filtros de metadata).
+Por eso el reparto es: **el script recupera, yo redacto.**
 
-Config esperada en env (Parameter Store o `.env` local):
 ```
-RAG_KB_ID          <knowledgeBaseId>:<dataSourceId>   (Bedrock KB)
-RAG_S3_BUCKET      olelife-pilot-corpus                (mirror)
-RAG_AWS_REGION     us-east-1                           (default)
-RAG_MODEL_ID       anthropic.claude-3-5-sonnet-20241022-v2:0  (generación)
+pregunta ─► rag-retrieve.sh ─► chunks (score · ruta · extracto) ─► yo leo, cruzo y respondo con citas
+                 │  aws bedrock-agent-runtime retrieve (managedSearchConfiguration)
+                 └  filtro por --source brain|product · --slug · --type, sobre la ruta de S3
 ```
 
-Si `RAG_KB_ID` no está configurado, el skill responde "RAG no habilitado — ver
-`docs/rag-setup.md` en el motor" y no rompe.
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/rag-retrieve.sh" "<pregunta>" [--k 8] [--source brain|product] [--slug <slug>] [--type prd|decision-log|stories|finding|flow|domain|analysis|rq-spec] [--json]
+```
+
+Config (en `config.local.conf` o env): `RAG_KB_ID=<knowledgeBaseId>[:<dataSourceId>]`, `RAG_AWS_REGION` (default `us-east-1`).
+Sin `RAG_KB_ID` el script sale con "RAG no habilitado — ver `docs/rag-setup.md`" y yo lo digo tal cual, sin romper.
+Cada ruta que devuelve (`product/intakes/<slug>/decision-log.md`, `brain/findings/<x>.md`) existe en el clon
+local del repo de datos o del cerebro: **la cita es el path**.
 
 ## Verbos
 
 ### `preguntar` (default) — Q&A con citas
-
 Disparador: `/argos-product:rag <pregunta>` o cualquier frase que pida contexto histórico.
+1. Elijo filtros solo si la pregunta lo dice (nombra un intake → `--slug`; "findings" → `--type finding`;
+   "decisiones/dudas" → `--type decision-log`; "el cerebro dice…" → `--source brain`). Si no, sin filtro.
+2. Corro el script con `--k 8`. **Leo los chunks** (y si un extracto no alcanza, abro el archivo citado
+   en el clon local: es markdown, está ahí).
+3. Respondo: resumen de 3-6 líneas + bloque **Citas** con hasta 5 rutas `[source/…/archivo.md]`.
+   Si el score promedio es < 0.5 lo digo: *"el corpus no tiene material fuerte sobre esto — la
+   respuesta puede ser parcial o desactualizada"*.
+4. **Nunca fabrico** rutas, slugs ni versiones. Si dudo, digo "no hay cita disponible".
 
-1. **Pre-filtro por metadata** (si la pregunta lo permite):
-   - Si menciona un slug de intake conocido → `metadataFilter: { slug: "<slug>" }`.
-   - Si pide "findings" → `docType in ["finding"]`.
-   - Si pide "decisiones" o "dudas" → `docType in ["decision-log"]`.
-   - Si pide "PRDs cerrados" → `status: "closed"`.
-   - Si no infiere filtro claro → sin filtro (top-k global).
-2. **Llamo a Bedrock KB** `RetrieveAndGenerate`:
-   - `numberOfResults: 8` (chunks)
-   - `orchestrationConfiguration.promptTemplate`: instruyo a citar **siempre** con
-     `[<file>:<slug>]` en cada afirmación.
-   - `generationConfiguration.inferenceConfig.textInferenceConfig.temperature: 0.2`
-     (respuestas conservadoras).
-3. **Emito la respuesta** al chat con:
-   - Resumen conciso (3-6 líneas máx.).
-   - Bloque "Citas" con hasta 5 links a los MDs fuente (formato `[slug/archivo.md#seccion]`
-     resoluble por el PM en su clon local).
-   - Si el score de recuperación es bajo (< 0.5 promedio), lo digo explícito:
-     "el corpus no tiene material fuerte sobre esto — la respuesta puede ser
-     parcial o desactualizada".
-4. **Nunca fabrico** links, slugs o versiones. Si dudo, digo "no hay cita disponible".
-
-### `similares` — encontrar intakes/PRDs parecidos a un texto
-
-Disparador: `/argos-product:rag similares <texto o slug de intake>` o pre-flight cuando
-`/intake nuevo` recibe una descripción inicial.
-
-1. Uso `Retrieve` (sin `AndGenerate` — solo top-k con scores).
-2. Devuelvo hasta 5 intakes/PRDs con score, slug, título, capability y una línea de
-   por qué son parecidos.
-3. Útil para: "antes de abrir este intake, ¿ya hay algo parecido en curso o cerrado?"
-   y para el PM decidir si sumarse o abrir aparte.
+### `similares` — intakes/PRDs parecidos a un texto
+Disparador: `/argos-product:rag similares <texto o slug>`, y **pre-flight automático de `/intake nuevo`**
+cuando `RAG_KB_ID` está configurado.
+1. `rag-retrieve.sh "<texto>" --source product --k 20 --type prd` (y una segunda pasada `--type stories`).
+2. Agrupo por `slug`; devuelvo hasta 5 intakes con score máximo, título (del STATUS del clon), estado y
+   una línea de por qué se parece. Sirve para decidir **sumarse a un intake existente o abrir aparte**.
 
 ### `auditar` — cruzar un PRD nuevo contra el corpus
+Disparador: `/argos-product:rag auditar <slug>`, y **paso opcional de `/intake aprobar`** cuando `RAG_KB_ID`
+está configurado (no bloquea la aprobación).
+1. Tomo del PRD: alcance (§3/§4), cada regla de §5 y cada historia de §6 — una consulta por bloque
+   (`--k 5`), una vez con `--source brain` y otra con `--source product`.
+2. Reporto en tres listas, cada ítem con su cita:
+   - **Contradicciones potenciales**: un flow/finding del cerebro dice X y el PRD dice Y.
+   - **Redundancia**: una historia parecida ya existe en otro intake (con su key de Jira si la tiene).
+   - **Precedente**: una duda igual ya se resolvió en otro decision-log (ahorra la tanda).
+3. **Solo sugiero** — nunca bloqueo el `aprobar`. Es señal para el PM, no gate automático.
+   Lo que el PM decida incorporar va al `decision-log` como fila con fuente `RAG: <ruta>`.
 
-Disparador: al aprobar un intake (`/argos-product:intake aprobar <slug>`), el gate llama
-a este verbo automáticamente.
-
-1. Extraigo secciones clave del PRD nuevo (alcance, criterios, capabilities).
-2. Para cada una, corro `Retrieve` con filtro `source: brain` y `source: product`.
-3. Reporto:
-   - **Contradicciones potenciales**: un flow del cerebro dice X, el PRD dice Y.
-   - **Redundancia**: una historia similar ya existe cerrada en otro intake.
-   - **Standard violado**: si el corpus tiene un `standards/prd.md` que el PRD contradice.
-4. **Solo sugiero** — nunca bloqueo el aprobar. Es señal para el PM revisar,
-   no un gate automático (regla: humano decide).
-
-### `patterns` — insights emergentes sobre el corpus
-
-Disparador: `/argos-product:rag patterns [--capability <cap>] [--last <N>d]`.
-
-Reporte periódico (útil al cierre de trimestre):
-- Bugs más frecuentes por capability.
-- Dudas que se repiten en múltiples intakes (posible gap del standard).
-- Tiempo promedio de resolución de decisiones por vertical.
-- Findings del cerebro más citados en intakes.
-
-Requiere corpus mínimo de ~20 intakes cerrados para dar valor. Antes, avisa
-"corpus insuficiente — al menos 20 RQs cerrados requeridos".
+### `patterns` — insights sobre el corpus (Fase 3)
+Sigue sin activar: requiere ~20 intakes cerrados. Antes de eso respondo "corpus insuficiente".
 
 ## Contrato de citas (regla dura)
-
-Toda respuesta del skill debe cumplir:
-
-1. **Cita obligatoria por afirmación** — si digo "en el módulo póliza decidimos X",
-   la próxima línea es `[modulo-poliza-petra/decision-log.md#duda-34]`.
-2. **Links resolubles** — los slugs y paths existen en `ole-argos-product-data` o
-   `ole-argos-brain`. Si no puedo verificar el path, no cito.
-3. **Sin síntesis inventada** — si 3 chunks dicen cosas parcialmente contradictorias,
-   las expongo con sus citas separadas, no fabrico una síntesis "promedio".
-4. **Disclaimer de foto** — cada respuesta cierra con `↳ corte del RAG: <fecha del
-   último ingestion job>`. Los stakeholders entienden que puede estar 6-24h atrás.
+1. **Cita obligatoria por afirmación**: la ruta del markdown que la sostiene.
+2. **Rutas resolubles**: existen en `ole-argos-product-data` o `ole-argos-brain`. Si no puedo verificarla, no cito.
+3. **Sin síntesis inventada**: si dos chunks se contradicen, los expongo con sus citas separadas.
+4. **Disclaimer de foto**: cierro con *"↳ corte del RAG: último ingestion job"* — el índice puede ir 6-24 h atrás del git.
 
 ## Reglas siempre activas
-
-- **NUNCA respondo sin corpus.** Si Bedrock KB devuelve 0 chunks o score muy bajo,
-  digo "no hay material relevante" y ofrezco reformular.
-- **NUNCA guardo la respuesta como fuente.** El markdown es la verdad; mi respuesta
-  es derivada.
-- **NUNCA decido por el PM.** Auditar, sugerir, mostrar patterns — siempre humano decide.
-- **Cero secretos** — el filtro `rag-sync.mjs` bloquea archivos con secretos detectados
-  antes de subir. Si igual encontrás uno, cortá el pipeline y reportá.
+- **NUNCA respondo sin corpus.** 0 chunks o score muy bajo → "no hay material relevante" y ofrezco reformular.
+- **NUNCA guardo mi respuesta como fuente.** El markdown es la verdad; mi respuesta es derivada.
+- **NUNCA decido por el PM.** Auditar, sugerir, mostrar similares — siempre humano decide.
+- **Cero secretos**: `rag-sync.mjs` bloquea archivos con secretos antes de subir; si igual veo uno en un chunk, corto y reporto.
 - **Idioma**: respondo en el idioma de la pregunta.
 
-## Setup inicial (una vez por workspace)
-
-1. **Infra AWS** (fuera del scope de este skill — ver `docs/rag-setup.md`):
-   - Bucket S3 `${RAG_S3_BUCKET}` en la cuenta de Olé.
-   - Bedrock KB con Aurora pgvector; dataSource apuntando al bucket.
-   - IAM role con OIDC para GitHub Actions.
-2. **Activar sync**:
-   - Copiar `templates/rag/rag-sync.yml` en `ole-argos-brain/.github/workflows/` y en
-     `ole-argos-product-data/.github/workflows/`.
-   - Definir secrets en cada repo (`RAG_AWS_ROLE_ARN`, `RAG_S3_BUCKET`, `RAG_S3_PREFIX`,
-     `RAG_KB_ID`).
-3. **Verificar**: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/rag-sync.mjs" <clon-local-del-repo> --dry-run`
-   imprime el manifiesto que se subiría (sin subir). Confirmar que:
-   - Ningún archivo aparece como `secret detected`.
-   - Los `docType` están bien mapeados.
-   - El count de `kept` es el esperado.
-4. **Primera corrida**: mergear un cambio trivial a `main` de cada repo → el Action
-   sube el corpus y dispara el primer ingestion-job.
-5. **Prueba**: `/argos-product:rag ¿qué findings tenemos sobre el módulo póliza?`
-
-## Interacción con otros skills
-
-- **`/argos-product:intake nuevo`** puede llamar internamente a `similares` para el
-  pre-flight (Fase 2 del roadmap).
-- **`/argos-product:intake aprobar`** llama a `auditar` como parte del gate (Fase 3).
-- **`/argos-product:avance`** no toca RAG — es data live de Jira.
+## Setup (una vez por workspace) — detalle en `docs/rag-setup.md`
+1. Infra AWS (bucket + KB managed + rol OIDC) — la creó Ops; KB `olelife-argos-kb`.
+2. `templates/rag/rag-sync.yml` en `ole-argos-brain` y `ole-argos-product-data` con sus secrets; `RAG_MOTOR_TAG` pineado
+   a la versión del motor. Si los dos repos sincronizan a la vez, `rag-sync.mjs` reintenta el ingestion job (409).
+3. `RAG_KB_ID` en tu `config.local.conf` y credenciales de AWS con `bedrock:Retrieve` sobre la KB.
+4. Prueba: `/argos-product:rag ¿qué findings tenemos sobre el módulo póliza?`

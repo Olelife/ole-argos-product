@@ -67,7 +67,7 @@ test('historias cerradas: por estado local o por meta de Jira', () => {
 
 test('decision-log: columnas por nombre y dudas abiertas', () => {
   const rows = parseTable(read('decision-log.md'), 'Duda');
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 4);
   assert.equal(DUDA.id(rows[0]), '1');
   assert.equal(DUDA.state(rows[1]), 'aplicada-al-PRD');
   assert.equal(DUDA.answer(rows[1]), 'Sí, solo Admin');

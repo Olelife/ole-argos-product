@@ -24,11 +24,18 @@ const dudasDone = dudas.length - dudasOpen;
 const mime = e => ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml' }[e] || 'application/octet-stream');
 function dataUri(p) { const b = readFileSync(p); return `data:${mime(extname(p).toLowerCase())};base64,${b.toString('base64')}`; }
 
-let diagrams = [];
+// Diagramas: si hay PNG renderizado se embebe; si solo está el .mmd, se dibuja en el navegador con
+// Mermaid (CDN) y el tema Olé — así el dashboard no depende de Chrome/npx en la máquina que lo generó.
+let diagrams = [], live = [];
 const aDir = join(dir, 'analysis');
-if (existsSync(aDir)) diagrams = readdirSync(aDir)
-  .filter(f => /\.(png|jpe?g|svg)$/i.test(f)).sort()
-  .map(f => ({ name: basename(f, extname(f)), uri: dataUri(join(aDir, f)) }));
+if (existsSync(aDir)) {
+  const files = readdirSync(aDir).sort();
+  diagrams = files.filter(f => /\.(png|jpe?g|svg)$/i.test(f)).map(f => ({ name: basename(f, extname(f)), uri: dataUri(join(aDir, f)) }));
+  const rendered = new Set(diagrams.map(d => d.name));
+  live = files.filter(f => /\.mmd$/i.test(f) && !rendered.has(basename(f, '.mmd'))).map(f => ({ name: basename(f, '.mmd'), src: readMaybe(join(aDir, f)) })).filter(d => d.src.trim());
+}
+let theme = {};
+try { theme = JSON.parse(readMaybe(new URL('../templates/mermaid-theme.json', import.meta.url)) || '{}'); } catch { /* tema por defecto */ }
 
 let figmaVers = [];
 const fDir = join(dir, 'figma');
@@ -65,6 +72,7 @@ const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
   .grid figure{margin:0;border:1px solid #e3e8ef;border-radius:10px;padding:8px;background:#fff}
   .grid img{width:100%;height:auto;border-radius:6px} .grid figcaption{font-size:12px;color:#6b7a90;margin-top:6px;text-align:center}
+  .grid pre.mermaid{margin:0;background:transparent;overflow-x:auto;text-align:center}
   .scroll{overflow-x:auto}
   @media (prefers-color-scheme:dark){
     .wrap{color:#e7ecf3}.wrap h1{color:#e7ecf3}.meta b{color:#e7ecf3}.track{background:#2a3852}
@@ -84,7 +92,7 @@ const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
     <div class="bar"><div class="lbl">Historias cerradas · ${storiesClosed}/${stories.length}</div><div class="track"><div class="fill" style="width:${pct(storiesClosed, stories.length)}%"></div></div></div>
   </div>
 
-  ${diagrams.length ? `<h2>Diagramas</h2><div class="grid">${diagrams.map(d => `<figure><img src="${d.uri}" alt="${esc(d.name)}"><figcaption>${esc(d.name)}</figcaption></figure>`).join('')}</div>` : ''}
+  ${diagrams.length || live.length ? `<h2>Diagramas</h2><div class="grid">${diagrams.map(d => `<figure><img src="${d.uri}" alt="${esc(d.name)}"><figcaption>${esc(d.name)}</figcaption></figure>`).join('')}${live.map(d => `<figure><pre class="mermaid">${esc(d.src)}</pre><figcaption>${esc(d.name)}</figcaption></figure>`).join('')}</div>` : ''}
 
   <h2>Dudas · ${dudasOpen} abiertas</h2>
   <div class="scroll"><table><tr><th>#</th><th>Duda</th><th>Fuente</th><th>Estado</th><th>Respuesta / decisión</th><th>Fecha</th></tr>${dudaRows || '<tr><td colspan="6" class="dim">sin dudas</td></tr>'}</table></div>
@@ -96,5 +104,11 @@ const html = `<title>${esc(fm.title || basename(dir))} · Intake</title>
   <div class="scroll"><table><tr><th>Versión</th><th>Frames</th><th>Alcance</th><th>Capturado</th></tr>${figRows}</table></div>
 </div>`;
 
-writeFileSync(join(dir, 'dashboard.html'), html);
-console.log(`✓ dashboard: ${join(dir, 'dashboard.html')} (${dudas.length} dudas, ${stories.length} historias, ${diagrams.length} diagramas, ${figmaVers.length} snapshots)`);
+const mermaidBoot = live.length ? `
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', ...${JSON.stringify(theme)} });
+</script>` : '';
+
+writeFileSync(join(dir, 'dashboard.html'), html + mermaidBoot);
+console.log(`✓ dashboard: ${join(dir, 'dashboard.html')} (${dudas.length} dudas, ${stories.length} historias, ${diagrams.length} diagramas renderizados + ${live.length} en vivo, ${figmaVers.length} snapshots)`);

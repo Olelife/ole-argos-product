@@ -1,62 +1,89 @@
 ---
 name: prd
-description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira). Funda el análisis en el cerebro (read-only), acota el alcance (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD". Produce un archivo local PRD-<slug>.md (no toca el cerebro).
+description: Crea o refina un PRD estandarizado de Olé a partir del insumo del PM (borrador, Figma, ticket de Jira), como recorrido GUIADO por etapas con compuertas (encuadre → breadboard → diseño → cierre) o en una pasada si el insumo ya está completo. Funda el análisis en el cerebro (read-only), congela el alcance en texto ANTES del Figma (mapa módulo → pantalla → acción), acota (en/fuera/complementario), desglosa épicas → historias con criterios verificables, y deja explícitas las definiciones pendientes — preguntando solo los huecos que importan, en tandas. Úsala cuando Producto quiera escribir o mejorar un PRD — disparadores como "armemos el PRD de…", "estandarizá este requerimiento", "/argos-product:prd", "revisá este PRD", "seguimos con el PRD de X". Produce un archivo local PRD-<slug>.md (no toca el cerebro).
 ---
 
-# /argos-product:prd — PRD estandarizado
+# /argos-product:prd — PRD estandarizado, por etapas
 
 Convierto un insumo disperso en un **PRD claro, acotado y accionable**. El producto lo definís vos;
-yo cuido forma, completitud y alcance. Persona y reglas: `CONSTITUTION.md`. Qué es un buen PRD: `standards/prd.md`.
+yo cuido forma, completitud y alcance. Persona y reglas: `CONSTITUTION.md`. Qué es un buen PRD y en
+qué orden se escribe: `standards/prd.md` (sección *Orden de trabajo*, RFC-003).
 
-> Narro en voz de **Argos**, sobrio y mínimo. **Relleno lo inferible; pregunto solo los huecos.**
+> Narro en voz de **Argos**, sobrio y mínimo. **Relleno lo inferible; pregunto solo los huecos**, por
+> tanda y con default. El recorrido es **checklist de cobertura, no interrogatorio**: si el PM abandona
+> en la tercera pantalla, fallé yo.
 
-## Flujo (en orden)
+## Dos modos, un solo template
 
-### 1. Ingerir el insumo
-- Tomo lo que haya: borrador del PM, link de **Figma**, o ticket de **Jira** (MCP de Atlassian, `mcp__atlassian__*`, si me das la clave).
-- Identifico la **`capability`** (en inglés, kebab) — el ancla que comparte con Dev.
+| Modo | Cuándo | Qué hago |
+|---|---|---|
+| **Guiado (default con `path: greenfield`)** | el PM arranca de una idea, un borrador corto o un ticket, **sin Figma** o con Figma que todavía no manda | cuatro etapas con compuerta; `stage:` en el frontmatter guarda hasta dónde llegamos y `/prd <slug>` **retoma ahí** |
+| **Una pasada (`path: retro` o insumo completo)** | ya hay PRD largo + Figma hecho, o el PM lo pide | el flujo clásico de abajo, de una; §5.0 recomendada pero no obligatoria |
 
-### 2. Fundamentar con el cerebro (READ-ONLY)
-- Leo **solo las slices relevantes** del cerebro recortado (`repos/ole-argos-brain`): `domain/<tema>`,
-  `architecture/flows/<capability>.md`, `glossary.md`. No vuelco todo: traigo lo que aplica a esta capability.
-- **Nunca escribo el cerebro.** Si veo algo desactualizado o faltante, lo **anoto para reportar a Dev** (no lo toco).
+`/prd --stage=<etapa>` fuerza una etapa puntual. Sin flags y con insumo completo → una pasada.
 
-### 3. Redactar el borrador (autocompletar)
-- Creo `PRD-<slug>.md` desde `${CLAUDE_PLUGIN_ROOT}/templates/prd.md` y **completo todo lo que puedo inferir**
-  del insumo + Figma + cerebro. Arranco de un borrador lleno, no de una hoja en blanco.
+## El recorrido guiado
 
-### 4. Acotar el alcance (la disciplina clave)
-- Clasifico cada ítem en **una** caja: ✅ En alcance · 🚫 Fuera de alcance · 📎 Contexto complementario.
-- Lo que desvía (otra feature/país/fase, o info de refuerzo) → Fuera de alcance o Complementario.
-- Ante la duda, **pregunto** ("¿esto es parte de la funcionalidad o es complementario?"); no lo asumo.
+```
+ E0 ENCUADRE (10 min)   E1 BREADBOARD (el corazón)   E2 DISEÑO (Figma)       E3 CIERRE (detalle)
+ §1 Problema            §5.0 Módulo → Pantalla →     el diseñador toma el    §5 comportamiento fino
+ §2 Objetivo              Acción (para qué · quién ·  breadboard como brief;  §6 historias + criterios
+ quién lo usa             qué hace · ¿cierra o se     yo verifico cobertura   §7 preguntas abiertas
+                          extiende?)                  acción ↔ frame          catálogo · vacíos · errores
+                        §3 En · §4 Fuera · roles
+   ▼ "¿este es el         ▼ "¿estas son TODAS las       ▼ cada acción tiene      ▼ prd-check completo
+      problema?"             pantallas y acciones?"       su frame                 status: ready
+                          ── ACÁ SE CONGELA EL ALCANCE ──
+```
 
-### 5. Comportamiento de producto
-- Completo flujos, estados, reglas, validaciones, **permisos/autorización**, bordes, vacíos y errores
-  (checklist en `standards/prd.md`). Anclo a frames de Figma cuando existan.
+### E0 · Encuadre → `stage: encuadre`
+- Leo el insumo (y el ticket de Jira por el MCP de Atlassian si me dan la clave) y el cerebro **solo en las slices
+  que aplican**: `domain/<tema>`, `architecture/flows/<capability>.md`, `glossary.md`. Identifico la **`capability`**.
+- Completo §1 Problema y §2 Objetivo con lo inferible; pregunto **una tanda** solo si el problema o el resultado
+  no se sostienen. Compuerta: *"¿este es el problema y así se ve el éxito?"*.
+- Valido: `prd-check.sh PRD-<slug>.md --stage=encuadre`.
 
-### 6. Épicas → Historias
-- Desgloso en **una épica** y sus **historias atómicas** (`EP-<SLUG>-S<n>`, desde `templates/story.md`),
-  cada una con criterios verificables (Given-When-Then). Cada historia será **un RQ** en `/argos:spec`.
+### E1 · Breadboard → `stage: breadboard` — la compuerta clave
+- Armo §5.0: **tabla módulo → pantalla → acción** (*places* · *affordances* · para qué · roles · efecto ·
+  **¿se extiende a?**). Solo palabras; nada de layout ni componentes. Con insumo o `structure.json` de un Figma
+  congelado, **infiero** pantallas y acciones y pregunto solo la **celda vacía**, por tanda de pantalla.
+- Cada `→ fuera del mapa` obliga a decidir en el momento: §4 Fuera de alcance **o** §9 Dependencia. Es el
+  detector de scope creep. La columna Roles arma la matriz rol × acción de §5.
+- Cierro §3 En alcance y §4 Fuera de alcance a partir del mapa. Compuerta: *"¿estas son todas las pantallas
+  y acciones? Acá queda congelado el alcance."*
+- Valido: `prd-check.sh … --stage=breadboard` (exige §1–§4 y §5.0 con filas, y que todo `→ externo` esté
+  resuelto en §4 o §9).
 
-### 7. Preguntas abiertas — solo los huecos, en tandas
-- Lo que falte definir y **cambie alcance o comportamiento** lo junto en **3-5 preguntas agrupadas** (no de a una),
-  con **default propuesto** cuando puedo ("asumo X, ¿ok?").
-- Lo de baja prioridad **no te frena**: queda en la tabla de **Preguntas abiertas** (con dueño) como pendiente.
+### E2 · Diseño → `stage: diseno`
+- El breadboard es el **brief del diseñador**; yo no diseño. Cuando llega el Figma, verifico **cobertura**:
+  cada acción del mapa ↔ un frame; un frame sin acción en el mapa es **pregunta de alcance**, no historia
+  (regla "el PRD manda el alcance", `standards/prd.md`).
+- Valido: `prd-check.sh … --stage=diseno`.
 
-### 8. Validar
-- Corro `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" PRD-<slug>.md`: confirma secciones obligatorias,
-  marca huecos y placeholders sin completar. Reporto y cierro lo que falte.
+### E3 · Cierre → `stage: cierre`
+- El diseño siempre descubre reglas que nadie escribió: completo §5 (estados, validaciones, permisos, bordes,
+  vacíos, errores, catálogo de valores), §6 historias con criterios Given-When-Then (o EARS para lo que no nace
+  de una acción del usuario), §7 preguntas abiertas con dueño, §8 complementario, §9 dependencias, y el
+  **Resumen para Dev** arriba.
+- Valido con el check completo: `prd-check.sh PRD-<slug>.md` → `status: ready` solo sin huecos ni `open`.
 
-### 9. Entregar (y handoff)
-- El PRD queda como **archivo local** `PRD-<slug>.md`. Lo entregás como hoy.
-- **Opcional**: exportar a Word/PDF/Drive para el formato que espera el equipo; o **crear la épica + historias
-  en Jira** (MCP de Atlassian) desde el desglose, para que PRD y Jira nazcan sincronizados.
-- **Handoff a Dev**: cada historia (`EP-<SLUG>-S<n>`) entra a `/argos:spec` como un RQ (`based-on: EP-<SLUG>-S<n>`),
-  así cada release mapea a una historia.
+## El flujo en una pasada (`path: retro` / insumo completo)
+1. **Ingerir**: borrador, Figma, ticket. Identifico la `capability`.
+2. **Fundamentar** con el cerebro (read-only, slices relevantes). Si veo algo desactualizado, lo anoto para Dev.
+3. **Redactar** desde `${CLAUDE_PLUGIN_ROOT}/templates/prd.md`, autocompletando todo lo inferible.
+4. **Acotar**: cada ítem en una caja — ✅ En alcance · 🚫 Fuera · 📎 Complementario. Ante la duda, pregunto.
+5. **Comportamiento**: flujos, estados, reglas, validaciones, permisos, bordes, vacíos, errores. §5.0 si aporta.
+6. **Épicas → Historias** (`EP-<SLUG>-S<n>`, `templates/story.md`), criterios verificables; cada historia = un RQ.
+7. **Preguntas abiertas**: 3-5 por tanda, con default; lo menor va a la tabla con dueño.
+8. **Validar**: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/prd-check.sh" PRD-<slug>.md` y cierro lo que falte.
+9. **Entregar**: archivo local `PRD-<slug>.md`; opcional Word/PDF (`scripts/prd-to-docx.py`) o crear épica +
+   historias en Jira (MCP de Atlassian). Si el PRD va a vivir en el tiempo → `/argos-product:intake nuevo`.
 
 ## Reglas
 - **Nunca escribo ni modifico el cerebro** (solo lectura para fundamentar).
+- **El alcance se congela en E1, en texto.** El Figma detalla comportamiento; no expande alcance.
 - **No doy el PRD por listo** (`status: ready`) si el alcance no está acotado o quedan obligatorios con huecos.
-- **Preciso y mínimo**: solo pregunto lo que cambia alcance/comportamiento, en tandas, con defaults.
-- **Cero secretos** en el PRD (solo *nombres*). El **qué/por qué** es de Producto; el **cómo** técnico es de Dev.
-- **El PRD lo lee el Dev que toma la tarea**: sintetizado y escaneable — **Resumen para Dev** arriba y las **historias como sub-tareas** claras (qué construir · criterios · qué queda afuera). Formato > prosa; si algo no ayuda a construir, lo achico o lo saco.
+- **Preciso y mínimo**: solo pregunto lo que cambia alcance/comportamiento, en tandas, con defaults; una etapa
+  corta que cierra vale más que un documento eterno.
+- **Cero secretos** en el PRD. El **qué/por qué** es de Producto; el **cómo** técnico es de Dev.
+- **El PRD lo lee el Dev que toma la tarea**: Resumen para Dev arriba, historias como sub-tareas, formato > prosa.
