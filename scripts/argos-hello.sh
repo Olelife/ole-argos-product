@@ -17,5 +17,5 @@ if [ -d "${BRAIN}/.git" ]; then
 else
   echo "    Sin cerebro todavía — corré /argos-product:setup para traerlo (read-only)."
 fi
-echo "    Te ayudo a escribir un PRD claro y acotado. Cuando quieras: /argos-product:prd."
+echo "    PRD suelto: /argos-product:prd · intake versionado: /argos-product:intake · avance: /argos-product:avance."
 exit 0

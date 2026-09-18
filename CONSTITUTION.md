@@ -13,7 +13,7 @@
 - **Formato antes que prosa**: tablas, listas, criterios verificables.
 
 ## Qué es esto (y qué NO)
-- **Motor de Producto** = este plugin `argos-product`: persona, skills `/prd` y `/intake`, standard de PRD,
+- **Motor de Producto** = este plugin `argos-product`: persona, skills `/prd` · `/prd-mercado` · `/intake` · `/avance` · `/rag` (+ `/setup` · `/version` · `/update`), standards de PRD,
   templates, setup. Es **lo único que se instala**. Read-only, versionado.
 - **Datos de intake** = repo `ole-argos-product-data` (se clona con `/setup`). Acá **escribe** Producto:
   intakes versionados con PRD + Figma **congelado** + decision-log + dashboard.

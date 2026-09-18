@@ -14,7 +14,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { readMaybe, parseFrontmatter, parseTable, esc } from './lib/md.mjs';
+import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, dudaOpen, esc } from './lib/md.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('uso: roadmap-gen.mjs <intakeDir>'); process.exit(1); }
@@ -30,9 +30,9 @@ const title = fm.title || basename(dir);
 const indexRows = parseTable(storiesMd, 'Historia');
 const storyIndex = new Map();
 for (const r of indexRows) {
-  const id = (r[0] || '').trim();
+  const id = STORY.id(r).trim();
   if (!id) continue;
-  storyIndex.set(id, { id, title: r[1] || '', ready: r[2] || '', jira: r[4] || '', rq: r[5] || '' });
+  storyIndex.set(id, { id, title: STORY.title(r), ready: STORY.ready(r) || STORY.state(r), jira: STORY.jira(r), rq: STORY.rq(r) });
 }
 
 // ── Sección "Orden de ejecución · roadmap por fase"
@@ -63,8 +63,7 @@ function parsePhases(md) {
 
 // ── Dudas abiertas
 function openDudas(md) {
-  const rows = parseTable(md, 'Duda');
-  return rows.filter(r => (r[3] || '').toLowerCase().includes('abierta'));
+  return parseTable(md, 'Duda').filter(dudaOpen);
 }
 
 // ── Deriva Ready? del emoji en la celda
@@ -82,11 +81,11 @@ function readyFromCell(cell) {
 function dudasByStory(dudas) {
   const map = new Map();
   for (const d of dudas) {
-    const body = (d[1] || '') + ' ' + (d[4] || '');
+    const body = DUDA.text(d) + ' ' + DUDA.answer(d);
     const ids = [...body.matchAll(/\bS\d+[a-z]?\b/g)].map(x => x[0]);
     for (const id of ids) {
       if (!map.has(id)) map.set(id, []);
-      map.get(id).push({ id: d[0], text: d[1] });
+      map.get(id).push({ id: DUDA.id(d), text: DUDA.text(d) });
     }
   }
   return map;
@@ -104,9 +103,9 @@ const phaseBlocks = missingSection ? '' : phases.map((p, i) => {
   // Detectar si es "Descartadas"
   const isDiscarded = /descartad/i.test(p.title);
   const cardHtml = p.rows.map(r => {
-    const sid = (r[0] || '').replace(/~~/g, '').trim();
-    const stitle = r[1] || '';
-    const ready = readyFromCell(isDiscarded ? '~~' : (r[2] || ''));
+    const sid = STORY.id(r).replace(/~~/g, '').trim();
+    const stitle = STORY.title(r);
+    const ready = readyFromCell(isDiscarded ? '~~' : (STORY.ready(r) || r[2] || ''));
     const flags = dudasBloq.get(sid) || [];
     const flagLabels = flags.length
       ? `<div class="hint">🚧 ${flags.map(f => `#${esc(f.id)}`).join(' · ')}</div>` : '';
@@ -137,7 +136,7 @@ const modalData = JSON.stringify(Object.fromEntries(
 const bloqPanel = dudas.length ? `
 <div class="blockers">
   <h3>🚧 ${dudas.length} duda(s) abierta(s)</h3>
-  <ul>${dudas.map(d => `<li><b>#${esc(d[0])}</b> · ${esc((d[1] || '').slice(0, 200))}${(d[1] || '').length > 200 ? '…' : ''}</li>`).join('')}</ul>
+  <ul>${dudas.map(d => `<li><b>#${esc(DUDA.id(d))}</b> · ${esc(DUDA.text(d).slice(0, 200))}${DUDA.text(d).length > 200 ? '…' : ''}</li>`).join('')}</ul>
 </div>` : '';
 
 const missingBanner = missingSection ? `

@@ -1,0 +1,72 @@
+name: CI — lint y smoke del Motor de Producto
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar shellcheck
+        run: sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+
+      - name: Sintaxis de los scripts (bash -n · node --check · py_compile)
+        run: |
+          rc=0
+          for s in scripts/*.sh tests/*.sh; do bash -n "$s" || { echo "✗ $s"; rc=1; }; done
+          for s in scripts/*.mjs scripts/lib/*.mjs; do node --check "$s" || { echo "✗ $s"; rc=1; }; done
+          python3 -m py_compile scripts/prd-to-docx.py || rc=1
+          exit $rc
+
+      - name: shellcheck (severidad error)
+        run: shellcheck --severity=error --exclude=SC1091 scripts/*.sh tests/*.sh
+
+      - name: JSON válido (plugin · marketplace · hooks · tema)
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json templates/mermaid-theme.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f'))" || { echo "✗ $f"; exit 1; }
+          done
+
+      - name: Coherencia versión ↔ marketplace ↔ ref ↔ CHANGELOG
+        run: |
+          node -e '
+            const fs=require("fs");
+            const p=JSON.parse(fs.readFileSync(".claude-plugin/plugin.json"));
+            const m=JSON.parse(fs.readFileSync(".claude-plugin/marketplace.json"));
+            const pl=(m.plugins||[]).find(x=>x.name===p.name);
+            if(!pl){ console.error("✗ marketplace no lista el plugin "+p.name); process.exit(1); }
+            const errs=[];
+            if(pl.version!==p.version) errs.push(`version: plugin=${p.version} marketplace=${pl.version}`);
+            const ref=pl.source && pl.source.ref;
+            if(ref!==("v"+p.version)) errs.push(`ref: esperaba v${p.version}, es ${ref}`);
+            const ch=fs.readFileSync("CHANGELOG.md","utf8");
+            if(!ch.includes("## v"+p.version)) errs.push(`CHANGELOG.md sin sección "## v${p.version}"`);
+            if(errs.length){ console.error("✗ incoherencia:\n  "+errs.join("\n  ")); process.exit(1); }
+            console.log("✓ "+p.version+" coherente (plugin = marketplace = ref = CHANGELOG)");
+          '
+
+      - name: Skills con frontmatter name + hooks apuntan a scripts existentes
+        run: |
+          rc=0
+          for f in skills/*/SKILL.md; do
+            head -5 "$f" | grep -q "^name:" || { echo "✗ $f sin 'name:' en frontmatter"; rc=1; }
+          done
+          for s in $(grep -o 'scripts/[a-z-]*\.sh' hooks/hooks.json | sort -u); do
+            [ -f "$s" ] || { echo "✗ hooks.json referencia $s y no existe"; rc=1; }
+          done
+          exit $rc
+
+      - name: Tests unitarios (contrato de parsing)
+        run: node --test tests/*.test.mjs
+
+      - name: Smoke test (todos los generadores sobre el fixture)
+        run: bash tests/smoke.sh

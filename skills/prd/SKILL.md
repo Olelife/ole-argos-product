@@ -13,7 +13,7 @@ yo cuido forma, completitud y alcance. Persona y reglas: `CONSTITUTION.md`. Qué
 ## Flujo (en orden)
 
 ### 1. Ingerir el insumo
-- Tomo lo que haya: borrador del PM, link de **Figma**, o ticket de **Jira** (`mcp__jira__*` si me das la clave).
+- Tomo lo que haya: borrador del PM, link de **Figma**, o ticket de **Jira** (MCP de Atlassian, `mcp__atlassian__*`, si me das la clave).
 - Identifico la **`capability`** (en inglés, kebab) — el ancla que comparte con Dev.
 
 ### 2. Fundamentar con el cerebro (READ-ONLY)
@@ -50,7 +50,7 @@ yo cuido forma, completitud y alcance. Persona y reglas: `CONSTITUTION.md`. Qué
 ### 9. Entregar (y handoff)
 - El PRD queda como **archivo local** `PRD-<slug>.md`. Lo entregás como hoy.
 - **Opcional**: exportar a Word/PDF/Drive para el formato que espera el equipo; o **crear la épica + historias
-  en Jira** (`mcp__jira__*`) desde el desglose, para que PRD y Jira nazcan sincronizados.
+  en Jira** (MCP de Atlassian) desde el desglose, para que PRD y Jira nazcan sincronizados.
 - **Handoff a Dev**: cada historia (`EP-<SLUG>-S<n>`) entra a `/argos:spec` como un RQ (`based-on: EP-<SLUG>-S<n>`),
   así cada release mapea a una historia.
 
