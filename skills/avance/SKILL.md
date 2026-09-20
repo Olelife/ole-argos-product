@@ -201,6 +201,11 @@ URL del Artifact y el hash del commit. Nada más.
 - **Idioma**: código en inglés (commits, scripts); narración con el PM en el idioma del team.
 - **El markdown es la verdad**; el `avance.html` y el Artifact son presentación regenerable.
 
+## La rutina semanal (viernes)
+La routine cloud que ya republica este tablero corre, en este orden y sobre cada intake activo: `slack` (baja las
+respuestas ratificadas de los hilos) → `avance` (foto + Monte Carlo + sync) → `update` (status para stakeholders).
+Así el viernes el decision-log, el tablero y el update salen del mismo corte.
+
 ## Interacción con `/argos-product:intake`
 
 `/argos-product:intake` ya no implementa `avance`: deriva acá. El verbo `sync` de `/intake`

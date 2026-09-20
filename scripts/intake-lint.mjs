@@ -46,6 +46,7 @@ if (!isTransversal) {
   if (badFigma.length) err(`STATUS: figma_url con valores que no son URLs de Figma: ${badFigma.map(f => f.key).join(', ')}`);
   else if (fu.length) ok(`STATUS: ${fu.length} URL(s) de Figma válidas`);
   for (const k of ['roadmap_artifact_url', 'avance_artifact_url', 'landing_url']) if (fm[k] && !/^https:\/\//.test(String(fm[k]))) err(`STATUS: ${k} no es una URL`);
+  if (fm.slack_channel && !/^#[a-z0-9_-]+$|^C[A-Z0-9]{8,}$/.test(String(fm.slack_channel))) warn(`STATUS: slack_channel "${fm.slack_channel}" no parece #canal ni ID de canal`);
   if (fm.figma_version && fm.figma_version !== '—') {
     const sp = join(dir, 'figma', String(fm.figma_version), 'structure.json');
     existsSync(sp) ? ok(`figma/${fm.figma_version}/structure.json presente`) : warn(`STATUS: figma_version ${fm.figma_version} pero no existe figma/${fm.figma_version}/structure.json`);
@@ -54,7 +55,7 @@ if (!isTransversal) {
 
 // --- 2 · decision-log
 const dudas = DUDAS(readMaybe(join(dir, 'decision-log.md')));
-const DSTATES = ['abierta', 'resuelta', 'aplicada-al-prd', 'descartada', 'movida'];
+const DSTATES = ['abierta', 'propuesta-en-slack', 'resuelta', 'aplicada-al-prd', 'descartada', 'movida'];
 const dudaIds = new Set();
 if (!isTransversal) {
   if (!dudas.length) warn('decision-log: sin filas (¿todavía sin auditoría de inconsistencias?)');
