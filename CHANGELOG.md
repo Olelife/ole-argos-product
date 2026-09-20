@@ -2,6 +2,16 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.21.0 — Taller listo para usar: plantilla de workspace con ficha de verbos generada
+
+Quien entra nuevo al Motor hoy repite a mano el mismo ritual: declarar el marketplace, habilitar el plugin, copiar la config y descubrir de a poco que existen veintidós verbos repartidos en ocho skills. Esta versión convierte ese ritual en un comando.
+
+- **`workspace-init.sh <destino>`** (verbo `taller` de `/argos-product:setup`) arma el taller en una carpeta: `.claude/settings.json` con el marketplace declarado y el plugin habilitado, `CLAUDE.md` con las reglas del taller, `README.md` de puesta en marcha, `config.local.conf` y `.gitignore`. **Idempotente**: fusiona un settings existente sin pisar otros plugins ni permisos, respeta los archivos ya creados y se puede correr en cada actualización del Motor.
+- **`workspace-doc.mjs`** genera la ficha de verbos **leyendo los propios `SKILL.md`** (el H1 de cada skill es su descripción corta; cada `### \`verbo\`` es una fila), así que no envejece a mano. Si el repo de datos está clonado, agrega además los **slugs vivos con su estado**. Escribe solo entre marcadores `<!-- argos:verbos -->` y `<!-- argos:intakes -->`, mismo patrón que el bloque auto de `STATUS.md`: la prosa del equipo queda intacta.
+- **`templates/workspace/`** guarda la plantilla: settings, `CLAUDE.md`, `README.md` y `gitignore`.
+- **`/argos-product:setup`** pasa a tener dos verbos: `clonar` (lo de siempre) y `taller`. El orden para alguien nuevo es `taller` → abrir la carpeta con Claude Code → `clonar` → `taller` otra vez para que la ficha liste los intakes.
+- **Smoke**: quince asserts nuevos cubren la creación, la fusión del settings, la generación de la ficha y la idempotencia (no duplica bloques, no pisa la prosa).
+
 ## v1.20.0 — Dudas por Slack con sustento: `preguntar` y `slack`
 
 Tanda T6 (2026-09-18). Las respuestas que Producto da por Slack entraban al decision-log como "resuelta" sin quién, cuándo ni link; ahora el intake abre el hilo, lee la respuesta ratificada y la cita.

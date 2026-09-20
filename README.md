@@ -13,7 +13,7 @@ sin sobrecargarte de preguntas.
 | `/argos-product:intake` | gestiona un **intake versionado** en el repo de datos: PRD + **Figma congelado** + decision-log + historias + dashboard + roadmap + handoff idempotente a Jira (con CSV de importación como fallback) + `sync` del estado real de Jira a `stories.md` + `reconciliar` findings del cerebro → decision-log + `tests` (casos de prueba del QA, con borrador desde los criterios) + `update` (status para stakeholders y release notes) + `comentarios` (del Artifact al decision-log) + `publicar` (Confluence) + `jira-diff` (PRD → Jira) + `preguntar`/`slack` (dudas a Slack, un hilo por duda, y las respuestas ratificadas con ✅ de vuelta al decision-log con cita, autor y permalink) |
 | `/argos-product:avance` | tablero de **avance** con pronóstico **Monte Carlo** (P50/P70/P85/P95 y semáforo contra la fecha comprometida), corte fresco desde Jira, publicado como Artifact |
 | `/argos-product:rag` | memoria histórica de Producto (Bedrock KB, `Retrieve` + redacción con citas al markdown fuente); `similares` y `auditar` se enganchan en `/intake` |
-| `/argos-product:setup` | clona el cerebro recortado (read-only) y el repo de datos `ole-argos-product-data` (read-write) |
+| `/argos-product:setup` | arma el **taller** (plantilla de workspace con el Motor instalado, config local y ficha de verbos generada desde los skills) y clona el cerebro recortado (read-only) y el repo de datos `ole-argos-product-data` (read-write) |
 | `/argos-product:version` · `update` | versión instalada vs publicada · actualizar el plugin |
 
 Lee el cerebro **solo para fundamentar** (domain, flows, findings, glossary); **nunca lo modifica**.
@@ -24,6 +24,17 @@ claude plugin marketplace add Olelife/ole-argos-product
 claude plugin install argos-product@argos-product-mkt --scope project
 # reiniciá Claude Code, luego:  /argos-product:setup
 ```
+
+### Taller listo para alguien nuevo
+Para que otra persona arranque sin configurar nada a mano, armá el **taller** en una carpeta vacía:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/workspace-init.sh" ~/taller-producto
+```
+Deja `.claude/settings.json` (marketplace + plugin habilitado), `config.local.conf`, `.gitignore` y un
+`CLAUDE.md` con las reglas del taller y la **ficha de verbos generada desde los propios skills** — más los
+**slugs vivos** cuando el repo de datos ya está clonado. Es idempotente: fusiona un settings existente sin
+pisar otros plugins y regenera solo los bloques entre marcadores, así que conviene volver a correrlo en
+cada `/argos-product:update` para que la ficha no envejezca.
 
 ## Modelo (importante) — 3 piezas
 ```

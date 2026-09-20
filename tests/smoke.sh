@@ -182,5 +182,23 @@ node "${ROOT}/scripts/stories-ready.mjs" "${INTAKE}" >/dev/null
 has "${INTAKE}/stories.md" "| S3 | Exportar | 🟢 LISTO |" "stories-ready: resuelta la duda, S3 queda LISTO"
 node "${ROOT}/scripts/dudas-resolve.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/slack-resuelta.json" --date 2026-09-18 | grep -q "ya estaban así" && ok "dudas-resolve: idempotente" || fail "dudas-resolve: reescribió sin cambios"
 
+# ---- taller: plantilla de workspace (idempotente, no pisa lo del equipo)
+WS="${TMP}/taller"
+bash "${ROOT}/scripts/workspace-init.sh" "${WS}" > "${TMP}/ws.out" 2>&1
+has "${TMP}/ws.out" "settings.json creado" "workspace-init: crea el settings del taller"
+has "${WS}/.claude/settings.json" '"argos-product@argos-product-mkt": true' "workspace-init: habilita el Motor"
+has "${WS}/CLAUDE.md" "| \`/argos-product:intake\` | intake versionado |" "workspace-doc: ficha de skills desde los SKILL.md"
+has "${WS}/CLAUDE.md" "| \`reconciliar\` |" "workspace-doc: ficha de verbos del intake"
+has "${WS}/CLAUDE.md" "| \`listar\` · \`abrir\` |" "workspace-doc: verbo con alias"
+has "${WS}/CLAUDE.md" "Corré \`/argos-product:setup\`" "workspace-doc: sin datos, guía al clonado"
+printf 'mi prosa del equipo\n' >> "${WS}/CLAUDE.md"
+ln -s "${DATA}" "${WS}/repos/ole-argos-product-data"
+bash "${ROOT}/scripts/workspace-init.sh" "${WS}" > "${TMP}/ws2.out" 2>&1
+has "${TMP}/ws2.out" "ya declaraba el Motor, sin cambios" "workspace-init: settings idempotente"
+has "${TMP}/ws2.out" "CLAUDE.md: ya existe, lo respeto" "workspace-init: no pisa el CLAUDE.md"
+has "${WS}/CLAUDE.md" "mi prosa del equipo" "workspace-doc: conserva la prosa fuera de los marcadores"
+has "${WS}/CLAUDE.md" "| \`sample-intake\` |" "workspace-doc: lista los slugs vivos del repo de datos"
+[ "$(grep -c '^<!-- argos:verbos -->' "${WS}/CLAUDE.md")" = "1" ] && ok "workspace-doc: no duplica el bloque al regenerar" || fail "workspace-doc: duplicó el bloque de verbos"
+
 echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

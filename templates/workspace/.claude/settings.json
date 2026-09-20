@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "argos-product-mkt": {
+      "source": {
+        "source": "github",
+        "repo": "Olelife/ole-argos-product"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "argos-product@argos-product-mkt": true
+  }
+}
