@@ -119,6 +119,17 @@ has "${TMP}/da.out" "1 duda(s) agregadas" "dudas-add: agrega la nueva con el id 
 has "${TMP}/da.out" "1 ya existían" "dudas-add: no duplica la que ya estaba"
 has "${INTAKE}/decision-log.md" "## Comentarios de stakeholders · 2026-09-18" "dudas-add: sección propia"
 node "${ROOT}/scripts/dudas-add.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/dudas-comentarios.json" --date 2026-09-18 | grep -q "todas ya registradas" && ok "dudas-add: idempotente" || fail "dudas-add: volvió a agregar"
+# una sección nueva debe encabezarse con la fila de columnas, no con una fila de datos que diga "duda"
+node "${ROOT}/scripts/dudas-add.mjs" "${INTAKE}" "${ROOT}/tests/fixtures/dudas-scope-gap.json" --date 2026-09-19 --section "Sync con Jira · 2026-09-19" >/dev/null
+sed -n '/^## Sync con Jira · 2026-09-19$/,+3p' "${INTAKE}/decision-log.md" > "${TMP}/sec.out"
+has "${TMP}/sec.out" "| # | Duda | Fuente | Estado |" "dudas-add: la sección nueva arranca con el encabezado real"
+node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  const { DUDAS, DUDA } = await import(process.argv[1] + "/scripts/lib/md.mjs");
+  const rows = DUDAS(readFileSync(process.argv[2] + "/decision-log.md", "utf8"));
+  const hit = rows.find(r => /Alcance sin registrar/.test(DUDA.text(r)));
+  if (!hit || !DUDA.id(hit)) process.exit(1);
+' "${ROOT}" "${INTAKE}" && ok "dudas-add: la fila de la sección nueva se parsea como duda" || fail "dudas-add: la fila quedó fuera de toda tabla"
 
 [ "$(node "${ROOT}/scripts/confluence-body.mjs" "${INTAKE}" --title)" = "Intake de muestra · PRD v1.2" ] && ok "confluence-body: título con versión" || fail "confluence-body: título inesperado"
 node "${ROOT}/scripts/confluence-body.mjs" "${INTAKE}" > "${TMP}/conf.md"

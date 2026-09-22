@@ -32,11 +32,19 @@ const cell = s => String(s || '').replace(/\|/g, '/').replace(/\r?\n/g, ' ').tri
 const mk = (id, it) => { const c = [String(id), cell(it.duda), cell(it.fuente), cell(it.estado || 'abierta'), cell(it.respuesta || ''), date]; while (c.length < cols) c.splice(c.length - 1, 0, ''); return `| ${c.slice(0, cols).join(' | ')} |`; };
 const newRows = fresh.map((it, i) => mk(maxId + 1 + i, it));
 if (section) {
-  const hdr = lastTable >= 0 ? lines.slice(0, lastTable + 1).reverse().find(l => /^\s*\|/.test(l) && /duda/i.test(l)) : '| # | Duda | Fuente | Estado | Respuesta / decisión | Fecha |';
+  // Un encabezado de tabla es la línea seguida por el separador `|---|`, no cualquier línea que diga
+  // "duda": el texto de una fila también la menciona y copiarla deja la sección nueva sin encabezado.
+  const DEFAULT_HDR = '| # | Duda | Fuente | Estado | Respuesta / decisión | Fecha |';
+  const isSep = l => /^\s*\|[\s:|-]+\|\s*$/.test(l || '');
+  let hdr = DEFAULT_HDR;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!/^\s*\|/.test(lines[i]) || !isSep(lines[i + 1])) continue;
+    const cells = lines[i].split('|').slice(1, -1).map(c => normalizeHeader(c.trim()));
+    if (cells.includes('duda')) { hdr = lines[i]; break; }
+  }
   const sepCols = hdr.split('|').slice(1, -1).length;
   md = md.trimEnd() + `\n\n## ${section}\n\n${hdr}\n| ${Array(sepCols).fill('---').join(' | ')} |\n${newRows.join('\n')}\n`;
 } else if (lastTable >= 0) { lines.splice(lastTable + 1, 0, ...newRows); md = lines.join('\n'); }
 else { console.error('✗ el decision-log no tiene tabla y no se pasó --section'); process.exit(1); }
 writeFileSync(p, md);
 console.log(`✓ ${fresh.length} duda(s) agregadas (#${maxId + 1}–#${maxId + fresh.length})${items.length - fresh.length ? ` · ${items.length - fresh.length} ya existían` : ''}`);
-void normalizeHeader;

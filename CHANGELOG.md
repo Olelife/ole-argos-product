@@ -2,6 +2,13 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.21.2 — `dudas-add` ya no confunde una fila con el encabezado
+
+Encontrado en el primer `sync` real sobre el Módulo Póliza. Al crear una sección nueva en el decision-log, `dudas-add.mjs` buscaba el encabezado de la tabla como «la última línea que dice *duda*», y el texto de una fila también menciona esa palabra. La sección nacía encabezada por una fila de datos: la tabla quedaba deformada y la duda recién agregada no entraba en el conteo de abiertas.
+
+- Ahora un encabezado se reconoce por lo que es: la línea **seguida por el separador** `|---|` y con una columna `Duda`. Si no hay ninguna, usa el encabezado canónico.
+- **Smoke**: dos asserts nuevos sobre una sección creada después de que exista una fila que menciona la palabra, que es lo que disparaba el defecto.
+
 ## v1.21.1 — El template de RAG deja de envejecer solo
 
 El workflow de sincronización del corpus pinea el tag del Motor como fallback, y el template del repo se había quedado en `v1.17.0` mientras los repos que ya lo adoptaron corrían con `v1.13.2` en su variable. Un repo nuevo que copiara el template arrancaba atrasado sin que nada avisara.
