@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOTOR="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 PLUGIN="${MOTOR}/.claude-plugin/plugin.json"
 MARKET="${MOTOR}/.claude-plugin/marketplace.json"
+RAGTPL="${MOTOR}/templates/rag/rag-sync.yml"
 
 [ -f "${PLUGIN}" ] || { echo "✗ no encuentro ${PLUGIN}" >&2; exit 1; }
 [ "$#" -ge 1 ] || { echo "Uso: $(basename "$0") <patch|minor|major|X.Y.Z>" >&2; exit 1; }
@@ -47,6 +48,13 @@ if [ -f "${MARKET}" ]; then
     fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
   "
   echo "  ✓ marketplace.json → ${new} (ref v${new})"
+fi
+
+# El template del workflow de RAG pinea el tag del Motor como fallback (la variable RAG_MOTOR_TAG lo
+# pisa en cada repo). Si no se bumpea acá, un repo nuevo que lo adopte arranca con un Motor viejo.
+if [ -f "${RAGTPL}" ]; then
+  perl -pi -e "s/v[0-9]+\.[0-9]+\.[0-9]+/v${new}/g if /RAG_MOTOR_TAG/" "${RAGTPL}"
+  echo "  ✓ templates/rag/rag-sync.yml → fallback v${new}"
 fi
 
 cat <<NEXT
