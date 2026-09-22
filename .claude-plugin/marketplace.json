@@ -9,9 +9,9 @@
       "source": {
         "source": "github",
         "repo": "Olelife/ole-argos-product",
-        "ref": "v1.21.2"
+        "ref": "v1.22.0"
       },
-      "version": "1.21.2",
+      "version": "1.22.0",
       "description": "Motor de Producto de Argos: PRDs estandarizados (/prd), PRDs de adaptación de mercado con lint y export a Word (/prd-mercado), intakes versionados con Figma congelado, decision-log y dashboard (/intake), y tablero de avance con contrato de frescura (/avance). Funda en el cerebro (read-only) y escribe en el repo de datos ole-argos-product-data."
     }
   ]

@@ -212,4 +212,22 @@ has "${WS}/CLAUDE.md" "| \`sample-intake\` |" "workspace-doc: lista los slugs vi
 [ "$(grep -c '^<!-- argos:verbos -->' "${WS}/CLAUDE.md")" = "1" ] && ok "workspace-doc: no duplica el bloque al regenerar" || fail "workspace-doc: duplicó el bloque de verbos"
 
 echo
+# ---- menos memoria: resolver el intake sin el slug exacto, y saber qué sigue
+node "${ROOT}/scripts/intake-resolve.mjs" "sample" --data "${DATA}" > "${TMP}/res.out" 2> "${TMP}/res.err"
+has "${TMP}/res.out" "intakes/sample-intake" "intake-resolve: resuelve por un pedazo del slug"
+node "${ROOT}/scripts/intake-resolve.mjs" "sample" --data "${DATA}" --touch >/dev/null 2>&1
+node "${ROOT}/scripts/intake-resolve.mjs" --data "${DATA}" > "${TMP}/res2.out" 2> "${TMP}/res2.err"
+has "${TMP}/res2.err" "el último intake que tocaste" "intake-resolve: sin consulta, recuerda el último"
+node "${ROOT}/scripts/intake-resolve.mjs" "no-existe-esto" --data "${DATA}" >/dev/null 2>&1 && fail "intake-resolve: debería fallar sin coincidencia" || ok "intake-resolve: lo que no existe no se fuerza"
+node "${ROOT}/scripts/next-step.mjs" "${INTAKE}" --date 2026-09-30 --json > "${TMP}/next.json"
+node -e '
+  const n = require(process.argv[1]);
+  if (!n.next || !n.next.verb || !n.next.why) process.exit(1);
+  if (!n.candidates.length || !n.facts.slug) process.exit(1);
+  if (n.candidates.some(c => !c.cmd)) process.exit(1);
+' "${TMP}/next.json" && ok "next-step: propone una acción con su porqué" || fail "next-step: salida incompleta"
+node "${ROOT}/scripts/next-step.mjs" "${INTAKE}" --date 2026-09-30 --all > "${TMP}/next.out"
+has "${TMP}/next.out" "Lo que sigue:" "next-step: salida legible para el PM"
+
+echo
 [ "${rc}" -eq 0 ] && echo "✓ smoke OK" || { echo "✗ smoke con fallas" >&2; exit 1; }

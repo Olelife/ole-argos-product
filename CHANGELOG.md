@@ -2,6 +2,16 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.22.0 — Usar el motor sin recordar verbos ni slugs
+
+Tres cambios que atacan lo mismo: el motor tenía dos mecanismos para ahorrarle memoria al PM, y uno estaba roto y el otro no existía.
+
+- **Disparadores desambiguados.** Ocho frases del skill de intake apuntaban a dos o tres verbos a la vez porque las listas se habían copiado entre secciones: decir «reconciliá X con el cerebro» podía caer en `roadmap`, en `sync` o en `reconciliar`. Ahora cada verbo declara solo las suyas, y las 47 frases resuelven a un único verbo.
+- **`intake-resolve.mjs` + `lib/resolve.mjs`.** El slug deja de ser un requisito de memoria: resuelve por slug exacto, clave de la épica (`SO-912`), prefijo, parte del slug o palabras del título, con acentos y espacios. Sin consulta toma el último intake tocado (`--touch` lo recuerda en `.argos-state.json` del repo de datos) o el único activo. **Nunca adivina entre varios**: devuelve los candidatos con código 2 para que el skill pregunte o abra el panel.
+- **Verbo `siguiente` (`next-step.mjs`).** Responde «¿y ahora qué?» leyendo el estado que el intake ya tiene calculado: dudas con hilo abierto en Slack, dudas sin preguntar que contradicen el PRD, días desde el último corte de Jira, antigüedad del avance, updates sin publicar, historias sin casos de prueba. Propone **una** acción con el porqué en números y deja el resto en fila (`--all`). Solo lee: no toca Jira, Slack ni Confluence.
+
+Además, `next-step` cuenta como fuera de juego una historia tachada o con el estado anotado («**descartada** (decision-log #50)»), que comparando por igualdad exacta se contaba como viva.
+
 ## v1.21.2 — `dudas-add` ya no confunde una fila con el encabezado
 
 Encontrado en el primer `sync` real sobre el Módulo Póliza. Al crear una sección nueva en el decision-log, `dudas-add.mjs` buscaba el encabezado de la tabla como «la última línea que dice *duda*», y el texto de una fila también menciona esa palabra. La sección nacía encabezada por una fila de datos: la tabla quedaba deformada y la duda recién agregada no entraba en el conteo de abiertas.
