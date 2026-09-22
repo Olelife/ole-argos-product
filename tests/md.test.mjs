@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrontmatter, parseTable, col, colExact, STORY, DUDA, storyClosed, dudaOpen, asList, figmaUrls, jiraKey, jiraBaseOf } from '../scripts/lib/md.mjs';
+import { resolveIntake } from '../scripts/lib/resolve.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const intake = join(here, 'fixtures', 'data-repo', 'intakes', 'sample-intake');
@@ -81,4 +82,27 @@ test('jira: key y host', () => {
   assert.equal(jiraBaseOf({}), 'https://olelife.atlassian.net');
   assert.equal(jiraBaseOf({ jira_base: 'https://otro.atlassian.net/' }), 'https://otro.atlassian.net');
   assert.equal(jiraBaseOf({}, 'https://x.y/'), 'https://x.y');
+});
+
+test('resolveIntake: el slug deja de ser un requisito de memoria', () => {
+  const C = [
+    { slug: 'modulo-poliza-petra', title: 'Módulo Póliza — Portal Asesores', status: 'draft', epics: ['SO-912'] },
+    { slug: 'modulo-poliza-mx', title: 'Módulo Póliza — Adaptación a México', status: 'draft', epics: [] },
+    { slug: 'cobranzas-petra', title: 'Módulo Cobranzas', status: 'in-delivery', epics: [] },
+  ];
+  assert.equal(resolveIntake(C, 'modulo-poliza-petra').match.slug, 'modulo-poliza-petra');
+  assert.equal(resolveIntake(C, 'cobranzas').match.slug, 'cobranzas-petra', 'prefijo');
+  assert.equal(resolveIntake(C, 'SO-912').match.slug, 'modulo-poliza-petra', 'clave de la épica');
+  assert.equal(resolveIntake(C, 'so-912').match.slug, 'modulo-poliza-petra', 'la clave no distingue mayúsculas');
+  assert.equal(resolveIntake(C, 'el modulo de poliza de petra').match.slug, 'modulo-poliza-petra', 'palabras sueltas');
+  assert.equal(resolveIntake(C, 'Módulo Cobranzas').match.slug, 'cobranzas-petra', 'acentos y espacios');
+
+  const amb = resolveIntake(C, 'poliza');
+  assert.equal(amb.match, null, 'no adivina entre dos pólizas');
+  assert.deepEqual(amb.ambiguous.map(c => c.slug), ['modulo-poliza-petra', 'modulo-poliza-mx']);
+
+  assert.equal(resolveIntake(C, '', { last: 'modulo-poliza-mx' }).match.slug, 'modulo-poliza-mx', 'sin consulta, el último');
+  assert.equal(resolveIntake(C, '').match.slug, 'cobranzas-petra', 'sin consulta ni memoria, el único activo');
+  assert.equal(resolveIntake(C, 'contabilidad').match, null, 'lo que no existe no se fuerza');
+  assert.equal(resolveIntake([], 'lo que sea').match, null, 'repo vacío');
 });

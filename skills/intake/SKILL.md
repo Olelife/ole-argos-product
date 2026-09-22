@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "armá el update semanal de X", "qué comentaron en el dashboard de X", "publicá el PRD de X en Confluence", "preguntá las dudas de X en Slack", "qué respondieron en Slack de X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
+description: Gestiona el ciclo de vida de un intake de producto VERSIONADO en el repo de datos (ole-argos-product-data) — a partir de un PRD borrador + Figma. A diferencia de /prd (que produce un archivo local suelto), intake persiste, CONGELA el Figma por versión, mantiene un decision-log de dudas↔respuestas, controla estados (intake/dudas/historias) y genera un dashboard. No hace falta recordar el slug (lo resuelve desde "póliza", "SO-912" o el último que tocaste) ni el verbo (preguntá "¿y ahora qué?" y propongo la acción que sigue). Úsalo cuando Producto quiera abrir o hacer seguir un intake vivo — disparadores como "nuevo intake de…", "actualizá el intake X", "respondé la duda N de X", "subí la versión del PRD/Figma de X", "mostrame el intake X", "aprobá el intake X", "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "armá el update semanal de X", "qué comentaron en el dashboard de X", "publicá el PRD de X en Confluence", "preguntá las dudas de X en Slack", "qué respondieron en Slack de X", "¿y ahora qué con X?", "qué sigue en X", "/argos-product:intake". Reutiliza el standard y el template de /prd para redactar el PRD dentro del intake.
 ---
 
 # /argos-product:intake — intake versionado
@@ -21,7 +21,22 @@ Ruta base de datos: `${OLE_REPOS:-<workspace>/repos}/ole-argos-product-data`. Si
 
 **Contrato de datos que respetan los scripts** (`scripts/lib/md.mjs`): las tablas de `stories.md` y `decision-log.md` se leen **por nombre de columna** (`Historia · Título · Estado · Estado Jira · Ready? · Jira · RQ` / `# · Duda · Fuente · Estado · Respuesta · Fecha`), así que puedo agregar o reordenar columnas sin romper los generadores. El frontmatter de `STATUS.md` admite bloques anidados (`figma_url:` con una URL por sección) y listas. Config opcional que los scripts leen: `jira_project`, `jira_base`, `jira_title_prefix`, `jira_epics`, `jira_goal_status`, `jira_stage_order` (documentadas en `templates/intake-status.md`). Una historia cuenta como **cerrada** si `Estado: cerrada` o si su `Estado Jira` alcanzó `jira_goal_status`.
 
+## Resolver el intake (antes de cualquier verbo)
+El slug es la llave de todo, pero **nadie tiene por qué recordarlo**. Si el pedido no trae el slug exacto,
+lo resuelvo yo: `node "${CLAUDE_PLUGIN_ROOT}/scripts/intake-resolve.mjs" "<lo que dijo el PM>" --touch`
+acepta el slug, un pedazo («póliza»), la clave de la épica («SO-912») o **nada** (toma el último intake que
+se tocó, o el único activo). Imprime la ruta por stdout. Códigos: **0** resuelto · **2** ambiguo (lista los
+candidatos: muestro el panel o pregunto cuál) · **1** sin coincidencia. `--touch` lo recuerda para la próxima,
+que es lo que hace funcionar un «¿cómo va?» pelado. **Nunca adivino entre varios**: si hay empate, pregunto.
+
 ## Verbos (detecto la intención del pedido)
+
+### `siguiente` — ¿y ahora qué?
+Disparadores: "¿y ahora qué?", "qué sigue en X", "qué tengo que hacer con X", "en qué está X y qué falta", "/argos-product:intake siguiente".
+Es la puerta de entrada para quien no quiere elegir verbo: leo el estado que el intake ya tiene calculado y **propongo una sola acción**.
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/next-step.mjs" <intakeDir> --date <hoy> [--all] [--json]` → la acción que sigue, con el porqué en números (dudas con hilo abierto, días desde el último corte de Jira, antigüedad del avance, updates sin publicar, historias sin casos de prueba).
+2. **Digo la acción y el porqué, y ofrezco ejecutarla.** Si el PM dice que sí, corro ese verbo; si prefiere otra cosa, `--all` muestra la fila completa. No ejecuto nada por mi cuenta: lo que escribe afuera (Jira, Slack, Confluence) sigue con su gate.
+3. No escribe nada ni consulta servicios externos: solo lee el intake y las fechas de git. Sirve como arranque de la rutina semanal antes de `slack → avance → update`.
 
 ### `listar` / `abrir` — ver todos los intakes y elegir uno
 Disparadores: `/argos-product:intake` **sin slug**, "listar intakes", "qué intakes hay", "abrí un intake", "abrí el tablero de intakes".
@@ -61,7 +76,7 @@ Disparadores: "mostrame el intake X", "cómo va X".
 - **Lo publico como Artifact** (compartible) usando ese HTML. El markdown sigue siendo la verdad.
 
 ### `roadmap` — entregable visual del plan de ejecución (RFC-002)
-Disparadores: "generá el roadmap del intake X", "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "armá el update semanal de X", "qué comentaron en el dashboard de X", "publicá el PRD de X en Confluence", "preguntá las dudas de X en Slack", "qué respondieron en Slack de X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X".
+Disparadores: "generá el roadmap del intake X", "actualizá el roadmap-mvp de X", "hacé el mapa de fases de X", "mostrale a Dev cómo abordamos X".
 Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista de "cómo lo abordamos" — una tarjeta por historia agrupada por fase, con estado Ready?, dudas bloqueantes cruzadas del decision-log y modal por historia. Es el artefacto que Producto le muestra a Dev cuando arranca el spec del RQ.
 1. **Prerequisito**: el `stories.md` debe tener la sección `## Orden de ejecución · roadmap por fase` con un H3 por fase y una tabla `Historia | Título | Ready?`. Si falta, el script genera igual el HTML **con un banner de warning** que guía a pegar `templates/stories-roadmap-section.md` del motor.
 2. **Datos que consume** (todos del intake, sin Jira ni servicios externos):
@@ -76,7 +91,7 @@ Distinto de `ver` (que es panel ejecutivo con contadores): `roadmap` es la vista
 El tablero de avance y la proyección de cierre son un skill propio con **contrato de frescura** (cada corte se reconstruye desde Jira). Si me lo piden desde acá, lo derivo: `/argos-product:avance <slug>`. Ese skill, además, deja `stories.md` y `STATUS.md` al día (verbo `sync`).
 
 ### `sync` — traer el estado real de Jira a `stories.md`
-Disparadores: "sincronizá las historias de X con Jira", "reconciliá X con el cerebro", "cruzá los casos de prueba de X", "armá el update semanal de X", "qué comentaron en el dashboard de X", "publicá el PRD de X en Confluence", "preguntá las dudas de X en Slack", "qué respondieron en Slack de X", "actualizá el estado de las historias de X", "qué historias de X ya cerraron".
+Disparadores: "sincronizá las historias de X con Jira", "actualizá el estado de las historias de X", "qué historias de X ya cerraron", "traé el estado real de Jira de X".
 1. **Snapshot desde Jira** (MCP Atlassian, sin heredar nada de cortes previos): `searchJiraIssuesUsingJql` con `("Epic Link" in (<jira_epics>) OR parent in (<jira_epics>)) AND issuetype = Historia`, fields `key, status, summary, labels`. Lo guardo como JSON `{ "issues": [ { "key", "status", "summary", "labels" } ] }` en el scratchpad (mismo shape que el input de `/avance`).
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/stories-sync.mjs" "intakes/<slug>" <snapshot.json>` → escribe `Estado Jira` (y `Jira` si la historia se reconoce por su label `intake-<slug>-s<n>`), pasa `Estado` a `en-Jira`/`cerrada` según `jira_goal_status`, y reporta **movimientos**, historias sin dato y issues de Jira sin fila. Nunca infiero por título.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/status-render.mjs" "intakes/<slug>" --date <hoy>` → regenera el bloque `<!-- argos:auto -->` de `STATUS.md` (conteos de dudas, historias, versiones, épicas, entregables) y `updated:`.
