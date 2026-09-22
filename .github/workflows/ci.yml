@@ -36,7 +36,7 @@ jobs:
             node -e "JSON.parse(require('fs').readFileSync('$f'))" || { echo "✗ $f"; exit 1; }
           done
 
-      - name: Coherencia versión ↔ marketplace ↔ ref ↔ CHANGELOG
+      - name: Coherencia versión ↔ marketplace ↔ ref ↔ CHANGELOG ↔ template RAG
         run: |
           node -e '
             const fs=require("fs");
@@ -50,8 +50,15 @@ jobs:
             if(ref!==("v"+p.version)) errs.push(`ref: esperaba v${p.version}, es ${ref}`);
             const ch=fs.readFileSync("CHANGELOG.md","utf8");
             if(!ch.includes("## v"+p.version)) errs.push(`CHANGELOG.md sin sección "## v${p.version}"`);
+            const tpl="templates/rag/rag-sync.yml";
+            if(fs.existsSync(tpl)){
+              for(const l of fs.readFileSync(tpl,"utf8").split("\n").filter(x=>x.includes("RAG_MOTOR_TAG"))){
+                const t=(l.match(/v\d+\.\d+\.\d+/)||[])[0];
+                if(t && t!=="v"+p.version) errs.push(`${tpl} pinea ${t}, esperaba v${p.version}`);
+              }
+            }
             if(errs.length){ console.error("✗ incoherencia:\n  "+errs.join("\n  ")); process.exit(1); }
-            console.log("✓ "+p.version+" coherente (plugin = marketplace = ref = CHANGELOG)");
+            console.log("✓ "+p.version+" coherente (plugin = marketplace = ref = CHANGELOG = template RAG)");
           '
 
       - name: Skills con frontmatter name + hooks apuntan a scripts existentes

@@ -2,6 +2,16 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.21.1 — El template de RAG deja de envejecer solo
+
+El workflow de sincronización del corpus pinea el tag del Motor como fallback, y el template del repo se había quedado en `v1.17.0` mientras los repos que ya lo adoptaron corrían con `v1.13.2` en su variable. Un repo nuevo que copiara el template arrancaba atrasado sin que nada avisara.
+
+- **`templates/rag/rag-sync.yml`** pasa a `v1.21.1`.
+- **`release.sh`** ahora bumpea ese fallback junto con `plugin.json` y `marketplace.json`, así que sigue el ritmo de cada release sin acordarse de nadie.
+- **CI**: el paso de coherencia suma el template. Si el fallback no coincide con la versión del plugin, el PR se cae con el valor esperado y el encontrado.
+
+Nada de esto cambia el comportamiento en los repos ya sincronizando: ahí manda la variable de repositorio `RAG_MOTOR_TAG`, que se setea aparte.
+
 ## v1.21.0 — Taller listo para usar: plantilla de workspace con ficha de verbos generada
 
 Quien entra nuevo al Motor hoy repite a mano el mismo ritual: declarar el marketplace, habilitar el plugin, copiar la config y descubrir de a poco que existen veintidós verbos repartidos en ocho skills. Esta versión convierte ese ritual en un comando.
