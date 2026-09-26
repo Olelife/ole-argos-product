@@ -2,6 +2,35 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.23.0 — `layer` como metadata nativa de Bedrock (RFC-mini)
+
+Nace de un piloto en `ole-argos-product-data/intakes/sistema-modulos-por-pais`: separar el corpus en capas
+(functional · technical · traceability) para que el bot de Slack no le muestre a Negocio nombres de handler
+ni bugs internos, y a Producto sí. El piloto etiquetaba a mano 4 docs con subcarpetas; esta versión lo
+resuelve para **todo el corpus, incluidas las historias que entren de acá en adelante**, sin que ningún PM
+cambie cómo escribe un PRD.
+
+- **`rag-sync.mjs` clasifica cada archivo por capa.** Tabla `DOCTYPE_LAYER`: `prd`/`stories` → `functional`
+  (el standard de PRD ya prohíbe el "cómo técnico", así que un PRD nace mayormente funcional), `decision-log`/
+  `jira-preview`/`jira-updates`/`status-update`/`prd-changelog`/`prd-review`/`status` → `traceability` (estado
+  de proceso, no comportamiento del sistema), `standard` → `technical`. Para `analysis`/`analysis-mermaid`
+  (docs de audit que pueden mezclar las tres) no hay default fijo: resuelve por frontmatter `layer:` explícito,
+  y si falta cae a `functional` (default seguro — mejor exponer de más un doc técnico ocasional que ocultarle
+  a Producto uno funcional).
+- **Sidecar `<key>.metadata.json` por objeto** (`metadataAttributes`, el formato que Bedrock indexa como
+  atributo *filtrable* — a diferencia del header S3 `Metadata` que ya existía, que es solo informativo). El
+  consumidor puede ahora pedir `retrievalConfiguration.managedSearchConfiguration.filter` por `layer` en vez
+  de post-filtrar por regex sobre la ruta del S3 key.
+- **`rag-sync.mjs` gana exports** (`layerFor`, `metadataSidecarFor`, `buildManifest`, …) detrás de un guard
+  `isMain`, para poder testearlo con `node --test` sin disparar la ejecución real (que exige `repoRoot` por
+  argv). Cero cambio de comportamiento en el CLI.
+- **8 tests nuevos** (`tests/rag-sync.test.mjs`): default por docType, override por frontmatter, valor
+  inválido no rompe (cae al default), case-insensitive, shape del sidecar, y que todo archivo del fixture
+  salga con una capa válida.
+
+Sin acción para intakes existentes: un re-sync completo (`gh workflow run rag-sync.yml` en `ole-argos-brain`
+y `ole-argos-product-data`) retag-uea los ~130 docs ya indexados sin tocar un solo PRD.
+
 ## v1.22.0 — Usar el motor sin recordar verbos ni slugs
 
 Tres cambios que atacan lo mismo: el motor tenía dos mecanismos para ahorrarle memoria al PM, y uno estaba roto y el otro no existía.

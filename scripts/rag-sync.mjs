@@ -10,24 +10,22 @@
 // Con --kb-id <id>: dispara un ingestion-job de Bedrock KB al terminar.
 //
 // Reglas de qué se incluye/excluye viven en INCLUDE_PATTERNS/EXCLUDE_PATTERNS abajo.
+//
+// `layer` (RFC-mini «layer como metadata nativa de Bedrock», ole-argos-product-data
+// /intakes/sistema-modulos-por-pais/RFC-mini-layer-metadata.md): cada archivo se
+// clasifica en functional · technical · traceability según su docType (tabla
+// DOCTYPE_LAYER), o por el frontmatter `layer:` explícito cuando el docType no
+// alcanza (hoy solo `analysis`/`analysis-mermaid`, que pueden mezclar capas). Ese
+// valor viaja como metadata de objeto S3 (informativo) Y como sidecar
+// `<key>.metadata.json` (`metadataAttributes`, formato que Bedrock indexa como
+// atributo filtrable) para que el consumidor (el bot) pueda pedir
+// `retrievalConfiguration.managedSearchConfiguration.filter` por capa en vez de
+// post-filtrar por regex sobre la ruta del S3 key.
 
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, extname, basename } from 'node:path';
-import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
-
-const args = process.argv.slice(2);
-const repoRoot = args[0];
-if (!repoRoot || !existsSync(repoRoot)) {
-  console.error('uso: rag-sync.mjs <repoRoot> [--to s3://bucket/prefix] [--dry-run] [--kb-id <id>]');
-  process.exit(1);
-}
-const argVal = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
-const dryRun = args.includes('--dry-run');
-const s3Target = argVal('--to');
-const kbId = argVal('--kb-id');
-const doUpload = !!s3Target && !dryRun;
 
 // --- Reglas de inclusión ------------------------------------------------------
 // Formato: array de { glob RE, docType, source, extractMeta? }
@@ -73,6 +71,56 @@ const EXCLUDE = [
   // Drafts privados marcados explícitamente
   /(^|\/)(PRIVATE-|_draft-).*/,
 ];
+
+// --- Capas (RFC-mini) ----------------------------------------------------------
+// Default por docType. Lo que no está acá (hoy: analysis · analysis-mermaid ·
+// figma-manifest · figma-structure · insumo-pdf) resuelve por frontmatter `layer:`
+// o cae al default seguro 'functional' (mejor exponer de más a Negocio un doc
+// técnico ocasional que ocultarle a Producto uno funcional).
+const DOCTYPE_LAYER = {
+  // brain
+  domain: 'functional',
+  service: 'functional',
+  flow: 'functional',
+  architecture: 'functional',
+  glossary: 'functional',
+  finding: 'traceability',
+  'rq-spec': 'technical',
+  // product
+  standard: 'technical',
+  status: 'traceability',
+  prd: 'functional',
+  'decision-log': 'traceability',
+  stories: 'functional',
+  'jira-preview': 'traceability',
+  'jira-updates': 'traceability',
+  'status-update': 'traceability',
+  'prd-changelog': 'traceability',
+  'prd-review': 'traceability',
+};
+const VALID_LAYERS = new Set(['functional', 'technical', 'traceability']);
+const LAYER_DEFAULT = 'functional';
+
+/** Resuelve la capa: frontmatter `layer:` explícito manda; si no, el default del
+ * docType; si el docType no tiene default (p.ej. analysis), cae a LAYER_DEFAULT. */
+function layerFor(docType, fmYaml) {
+  const explicit = String(fmYaml?.layer ?? '').toLowerCase();
+  if (VALID_LAYERS.has(explicit)) return explicit;
+  return DOCTYPE_LAYER[docType] ?? LAYER_DEFAULT;
+}
+
+/** Sidecar de metadata que Bedrock indexa como atributos filtrables
+ * (`<s3-key>.metadata.json`, formato `metadataAttributes`). Todo lo que ya
+ * viaja como header S3 informativo (metadata()) se repite acá para que
+ * managedSearchConfiguration.filter pueda usarlo. */
+function metadataSidecarFor(metadata) {
+  const attrs = {};
+  for (const [k, v] of Object.entries(metadata)) {
+    if (v == null || v === '') continue;
+    attrs[k] = { value: { type: 'STRING', stringValue: String(v) }, includeForEmbedding: false };
+  }
+  return { metadataAttributes: attrs };
+}
 
 // --- Escaneo de árbol ---------------------------------------------------------
 async function walk(dir, out = []) {
@@ -180,6 +228,7 @@ async function buildManifest(rootPath) {
         source: rule.source,
         repo,
         docType: rule.docType,
+        layer: layerFor(rule.docType, fmYaml),
         slug,
         version,
         status: fmYaml.status,
@@ -230,6 +279,14 @@ async function uploadS3(kept, rootPath, s3Uri) {
       Metadata: { ...meta, sha: safeHeader(it.sha), 'last-updated': safeHeader(it.lastUpdated) },
       ContentType: contentTypeFor(it.file),
     }));
+    // Sidecar que Bedrock SÍ indexa como atributo filtrable (a diferencia del
+    // header S3 de arriba, que es solo informativo). Convención de AWS: junto a
+    // <key> va <key>.metadata.json.
+    await s3.send(new PutObjectCommand({
+      Bucket: bucket, Key: `${key}.metadata.json`,
+      Body: Buffer.from(JSON.stringify(metadataSidecarFor(it.metadata)), 'utf8'),
+      ContentType: 'application/json; charset=utf-8',
+    }));
     uploaded++;
   }
   return uploaded;
@@ -275,8 +332,24 @@ async function triggerIngestion(kbIdArg) {
   }
 }
 
-// --- Main --------------------------------------------------------------------
-(async () => {
+// --- CLI -----------------------------------------------------------------------
+// Guardado detrás de isMain para que los tests puedan `import` las funciones de
+// arriba sin disparar la ejecución (que exige repoRoot por argv y hace process.exit).
+const isMain = process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href;
+
+async function main() {
+  const args = process.argv.slice(2);
+  const repoRoot = args[0];
+  if (!repoRoot || !existsSync(repoRoot)) {
+    console.error('uso: rag-sync.mjs <repoRoot> [--to s3://bucket/prefix] [--dry-run] [--kb-id <id>]');
+    process.exit(1);
+  }
+  const argVal = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
+  const dryRun = args.includes('--dry-run');
+  const s3Target = argVal('--to');
+  const kbId = argVal('--kb-id');
+  const doUpload = !!s3Target && !dryRun;
+
   const { kept, skipped, secrets } = await buildManifest(repoRoot);
   const summary = {
     repoRoot,
@@ -305,4 +378,14 @@ async function triggerIngestion(kbIdArg) {
     for (const s of secrets) console.error(`  - ${s.file} (${s.patterns.join(', ')})`);
     process.exitCode = 3;
   }
-})();
+}
+
+if (isMain) {
+  main();
+}
+
+export {
+  INCLUDE, EXCLUDE, DOCTYPE_LAYER, VALID_LAYERS, LAYER_DEFAULT,
+  layerFor, metadataSidecarFor, parseFrontmatter, scanSecrets,
+  buildManifest, uploadS3, contentTypeFor, triggerIngestion,
+};
