@@ -23,7 +23,7 @@ jobs:
         run: |
           rc=0
           for s in scripts/*.sh tests/*.sh; do bash -n "$s" || { echo "✗ $s"; rc=1; }; done
-          for s in scripts/*.mjs scripts/lib/*.mjs; do node --check "$s" || { echo "✗ $s"; rc=1; }; done
+          for s in scripts/*.mjs scripts/*.js scripts/lib/*.mjs; do node --check "$s" || { echo "✗ $s"; rc=1; }; done
           python3 -m py_compile scripts/prd-to-docx.py || rc=1
           exit $rc
 
