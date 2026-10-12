@@ -19,13 +19,17 @@ if (!root || !existsSync(root)) { console.error('uso: design-serve.mjs <intakes/
 const port = Number(opt('--port') || 8765);
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.mjs': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.md': 'text/markdown; charset=utf-8' };
-const SAVE_PATH = /^[^/\\]+\/specs\/[^/\\]+\/raw-[A-Za-z0-9._-]+\.json$/;
+const SAVE_PATH = /^[^/\\.][^/\\]*\/specs\/[^/\\.][^/\\]*\/raw-[A-Za-z0-9._-]+\.json$/;
 const MAX_BODY = 25 * 1024 * 1024;
 
 const inside = p => { const r = relative(root, p); return r && !r.startsWith('..') && !r.split(sep).includes('..'); };
 const send = (res, code, body, type = 'text/plain; charset=utf-8') => { res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' }); res.end(body); };
 
+// Solo atiende a la propia página: otro sitio abierto en el navegador (o un DNS rebinding) no puede leer ni plantar raws.
+const LOCAL = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
 const server = createServer((req, res) => {
+  const origin = req.headers.origin;
+  if (!LOCAL.has(req.headers.host || '') || (origin && !LOCAL.has(origin.replace(/^https?:\/\//, '')))) return send(res, 403, 'solo desde http://127.0.0.1:' + port);
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   if (req.method === 'GET' && url.pathname === '/__extract.js') return send(res, 200, readFileSync(join(HERE, 'design-extract.js')), TYPES['.js']);
   if (req.method === 'POST' && url.pathname === '/__save') {

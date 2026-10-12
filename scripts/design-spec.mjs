@@ -26,7 +26,8 @@ const raws = rawFiles.map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')));
 const tok = raws[0].tokens || {};
 
 const byHex = new Map();
-for (const [k, v] of Object.entries(tok)) if (/^#[0-9A-F]{6}$/.test(v)) { if (!byHex.has(v)) byHex.set(v, []); byHex.get(v).push(k); }
+const hex6 = v => (/^#[0-9A-F]{3}$/i.test(v) ? `#${[...v.slice(1)].map(c => c + c).join('')}` : v).toUpperCase();
+for (const [k, v] of Object.entries(tok)) if (/^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i.test(v)) { const h = hex6(v); if (!byHex.has(h)) byHex.set(h, []); byHex.get(h).push(k); }
 const ctok = v => {
   if (!v) return null;
   const at = v.indexOf('@');

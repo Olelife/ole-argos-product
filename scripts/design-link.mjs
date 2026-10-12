@@ -63,9 +63,10 @@ const byStory = new Map();
 for (const r of rows) {
   const f = resolveFolder(r[idx('Carpeta')]);
   if (!f) continue;
-  for (const m of String(r[idx('Historias')]).matchAll(/\b([SH]\d+[a-z]?)\b/g)) {
-    if (!byStory.has(m[1])) byStory.set(m[1], []);
-    if (!byStory.get(m[1]).includes(f)) byStory.get(m[1]).push(f);
+  for (const m of String(r[idx('Historias')]).matchAll(/\b([SH]\d+[a-z]?)\b/gi)) {
+    const sid = m[1].toUpperCase();
+    if (!byStory.has(sid)) byStory.set(sid, []);
+    if (!byStory.get(sid).includes(f)) byStory.get(sid).push(f);
   }
 }
 const index = parseTable(readMaybe(join(dir, 'stories.md')), 'Historia');
@@ -78,16 +79,16 @@ const duda = opt('--system-duda') ? `, #${String(opt('--system-duda')).replace(/
 const escRx = s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 function section(lines, sid, fullId, { level } = {}) {
   const ids = [fullId, sid].filter(Boolean).map(escRx).join('|');
-  const lead = level ? new RegExp(`^#{${level}}\\s+(?:${ids})\\b`) : new RegExp(`^#{2,4}\\s+\\**(?:${ids})\\b`);
-  const anywhere = new RegExp(`^#{2,4}\\s+[^\\n]*\\b(?:${ids})\\b`);
+  const lead = level ? new RegExp(`^#{${level}}\\s+(?:${ids})\\b`, 'i') : new RegExp(`^#{2,4}\\s+\\**(?:${ids})\\b`, 'i');
+  const anywhere = new RegExp(`^#{2,4}\\s+[^\\n]*\\b(?:${ids})\\b`, 'i');
   let start = lines.findIndex(l => lead.test(l));
   if (start < 0 && !level) start = lines.findIndex(l => anywhere.test(l));
   if (start < 0) return null;
   const lv = level || lines[start].match(/^#+/)[0].length;
   let end = start + 1;
-  while (end < lines.length && !new RegExp(`^#{1,${lv}}\\s`).test(lines[end]) && !(level && /^---\s*$/.test(lines[end]))) end++;
+  while (end < lines.length && !new RegExp(`^#{1,${lv}}\\s`).test(lines[end]) && !/^---\s*$/.test(lines[end])) end++;
   let last = end - 1;
-  while (last > start && !lines[last].trim()) last--;
+  while (last > start && (!lines[last].trim() || /^\s*<!--.*-->\s*$/.test(lines[last]))) last--;
   return { start, end, last };
 }
 
@@ -120,9 +121,10 @@ function linkPreview(text, sid, fullId, fs) {
   const lines = text.split('\n');
   const s = section(lines, sid, fullId, { level: 2 });
   if (!s) return { text, done: false };
+  const SUB = /^(\s*)(#{2,4})\s/;
   const sub = [];
-  for (let i = s.start + 1; i < s.end; i++) if (/^\s+##\s/.test(lines[i])) sub.push(i);
-  const ind = sub.length ? lines[sub[0]].match(/^\s*/)[0] : '  ';
+  for (let i = s.start + 1; i < s.end; i++) if (SUB.test(lines[i])) sub.push(i);
+  const [, ind, hashes] = sub.length ? lines[sub[0]].match(SUB) : [null, '  ', '##'];
   const multi = fs.length > 1;
   const block = [`${ind}**Especificación desde el código fuente del diseño (${version}, sistema de diseño ${system}${duda}):**`, ''];
   for (const f of fs) {
@@ -133,21 +135,21 @@ function linkPreview(text, sid, fullId, fs) {
   const prev = lines.findIndex((l, i) => i > s.start && i < s.end && /^\s*\*\*Especificación desde el código fuente del diseño/.test(l));
   if (prev >= 0) {
     let e = prev + 1;
-    while (e < s.end && (!lines[e].trim() || /^\s*- \[/.test(lines[e]))) e++;
+    while (e < s.end && (!lines[e].trim() || (/^\s*- \[/.test(lines[e]) && /\/specs\//.test(lines[e])))) e++;
     while (e > prev + 1 && !lines[e - 1].trim()) e--;
     lines.splice(prev, e - prev, ...block);
     return { text: lines.join('\n'), done: true };
   }
-  const dis = sub.find(i => /^\s+##\s+Diseño\s*$/.test(lines[i]));
+  const dis = sub.find(i => /^\s*#{2,4}\s+Diseño\s*$/.test(lines[i]));
   if (dis !== undefined) {
     const next = sub.find(i => i > dis);
     let at = (next ?? s.end) - 1;
     while (at > dis && !lines[at].trim()) at--;
     lines.splice(at + 1, 0, '', ...block);
   } else {
-    const before = sub.find(i => /^\s+##\s+(Diagrama de secuencia|Fuera de esta historia)/.test(lines[i]));
-    if (before !== undefined) lines.splice(before, 0, `${ind}## Diseño`, '', ...block, '');
-    else lines.splice(s.last + 1, 0, '', `${ind}## Diseño`, '', ...block);
+    const before = sub.find(i => /^\s*#{2,4}\s+(Diagrama de secuencia|Fuera de esta historia)/.test(lines[i]));
+    if (before !== undefined) lines.splice(before, 0, `${ind}${hashes} Diseño`, '', ...block, '');
+    else lines.splice(s.last + 1, 0, '', `${ind}${hashes} Diseño`, '', ...block);
   }
   return { text: lines.join('\n'), done: true };
 }
