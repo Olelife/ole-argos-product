@@ -38,6 +38,7 @@ const baselineRev = key => { try { return execSync(`git log --format=%H --revers
 const norm = s => s.replace(/\s+/g, ' ').trim();
 const criteria = body => [...body.matchAll(/^\s*[-*]\s*(?:\[[ x]\]\s*)?(?:\**CA-[\w.]+\**\s*[·:-]\s*)?\**((?:Dad[oa]s?|Cuando)\b[^\n]+)$/gim)].map(m => norm(m[1]));
 const figma = body => [...body.matchAll(/https:\/\/www\.figma\.com\/[^\s)>]+/g)].map(m => m[0]);
+const specs = body => [...body.matchAll(/https:\/\/[^\s)>]+\/figma\/v[\w.]+\/[^\s)>]+\/specs\/[^\s)>]+/g)].map(m => m[0]);
 
 const changes = [];
 for (const r of stories) {
@@ -51,12 +52,14 @@ for (const r of stories) {
   const added = cNow.filter(c => !cThen.includes(c)), removed = cThen.filter(c => !cNow.includes(c));
   const fNow = new Set(figma(now)), fThen = new Set(figma(then));
   const figAdded = [...fNow].filter(f => !fThen.has(f)), figRemoved = [...fThen].filter(f => !fNow.has(f));
-  const textOnly = !added.length && !removed.length && !figAdded.length && !figRemoved.length;
-  changes.push({ key, id, title: STORY.title(r), rev: rev.slice(0, 8), added, removed, figAdded, figRemoved, textOnly, now });
+  const sNow = new Set(specs(now)), sThen = new Set(specs(then));
+  const specAdded = [...sNow].filter(f => !sThen.has(f)), specRemoved = [...sThen].filter(f => !sNow.has(f));
+  const textOnly = !added.length && !removed.length && !figAdded.length && !figRemoved.length && !specAdded.length && !specRemoved.length;
+  changes.push({ key, id, title: STORY.title(r), rev: rev.slice(0, 8), added, removed, figAdded, figRemoved, specAdded, specRemoved, textOnly, now });
 }
 
 console.log(`🗿 jira-diff ${slug}: ${stories.length} historias en Jira · ${changes.length} con la definición cambiada desde su alta`);
-for (const c of changes) console.log(`  ${c.key.padEnd(8)} ${c.id.padEnd(28)} +${c.added.length} criterio(s) · −${c.removed.length} · figma +${c.figAdded.length}/−${c.figRemoved.length}${c.textOnly ? ' · solo redacción' : ''}  (desde ${c.rev})`);
+for (const c of changes) console.log(`  ${c.key.padEnd(8)} ${c.id.padEnd(28)} +${c.added.length} criterio(s) · −${c.removed.length} · figma +${c.figAdded.length}/−${c.figRemoved.length}${c.specAdded.length + c.specRemoved.length ? ` · spec +${c.specAdded.length}/−${c.specRemoved.length}` : ''}${c.textOnly ? ' · solo redacción' : ''}  (desde ${c.rev})`);
 if (!changes.length) { console.log('  Jira está al día con el intake.'); process.exit(0); }
 
 if (write) {
@@ -67,7 +70,9 @@ if (write) {
     if (c.removed.length) L.push(...c.removed.map(x => `- **− criterio:** ~~${x}~~`));
     if (c.figAdded.length) L.push(...c.figAdded.map(x => `- **+ frame:** ${x}`));
     if (c.figRemoved.length) L.push(...c.figRemoved.map(x => `- **− frame:** ${x}`));
-    if (c.textOnly) L.push('- Solo cambió la redacción (sin criterios ni frames nuevos): revisar si vale actualizar el ticket.');
+    if (c.specAdded.length) L.push(...c.specAdded.map(x => `- **+ spec del diseño:** ${x}`));
+    if (c.specRemoved.length) L.push(...c.specRemoved.map(x => `- **− spec del diseño:** ${x}`));
+    if (c.textOnly) L.push('- Solo cambió la redacción (sin criterios, frames ni specs nuevos): revisar si vale actualizar el ticket.');
     L.push('', '<details><summary>Descripción completa nueva (para pegar/editar)</summary>', '', c.now, '', '</details>', '');
   }
   const out = join(dir, 'jira-updates.md');

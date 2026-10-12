@@ -2,6 +2,23 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.23.0 — Especificación desde el código fuente de Claude Design: verbo `specs`
+
+El diseño de los intakes recientes ya no viene de Figma sino de prototipos de Claude Design. La extracción que se usó en Incentivos (`figma/v4`) y Roles y Permisos (`figma/v2`) vivía suelta en el repo de datos (`tools/design-spec/`), con valores fijos a un portal y el paso del navegador hecho a mano. Ahora es parte del Motor.
+
+- **Verbo `specs` de `/argos-product:intake`**: baja el export con Claude in Chrome (confirmación en el chat por cada descarga), congela solo lo vigente con revisión de secretos, extrae por pantalla y estado en el navegador de la app a 1440 px, genera `spec.json` · `copy.md` · `token-findings.json` · `a-validar.md` y enlaza los specs en el PRD, `stories.md` y `jira-preview.md`.
+- **`design-freeze.mjs`**: el archivo vigente sale del `?file=` del proyecto (o `--entry`); guarda sus `dc-import` (recursivo), cada `src`/`href` relativo que exista, `assets/` y `_ds/`; descarta versiones anteriores, otros archivos, `uploads/` sin referenciar, `scratch/`, `export/` y metadatos. Una posible credencial frena todo (exit 3) hasta que el PM la revise (`--accept-findings`); correos y documentos se listan para confirmar que son de ejemplo. Escribe el hash del zip y la fila de la superficie en el `MANIFEST.md`. Sobre los tres zips reales reproduce **byte a byte** los `source/` que se congelaron a mano.
+- **`design-serve.mjs` + `design-extract.js`**: el servidor local solo escribe `raw-*.json` bajo `<superficie>/specs/<pantalla>/`. La **barra lateral** deja de depender del texto «Mi Agencia»/«Contratos»: se detecta un `<nav>`/`<aside>` anclado a la izquierda y de alto completo (un riel de íconos incluido), un bloque fixed/sticky o la columna izquierda del layout, y se fuerza con `window.__argos = { side: '<selector>' | <px> | 'none' }`. Verificado en los tres prototipos: 70 px en el riel de Roles y Permisos (antes se parchaba con `window.__sideX`), 180 y 240 px en Incentivos, con los mismos nodos que los raw guardados. `__logicKeys()` muestra las claves del state de un `.dc.html`.
+- **`design-spec.mjs`** (port de `build_spec.py`): el `designSystem` sale del `_ds/` congelado (o `--system`), la familia tipográfica de `--font-*` y las escalas de `--text-*`, `--radius-*` y `--shadow-*`. Paridad sobre las 21 pantallas reales: `copy.md` y `spec.json` idénticos byte a byte salvo `designSystem`; los hallazgos iguales, con la escala en el campo nuevo `escala`.
+- **`design-avalidar.mjs`**: título, historias y fecha del export salen del MANIFEST, el sistema del `spec.json`, y `--system-duda N` cita el estado de la duda del decision-log (antes fijos en "export del 08/Oct" y "Portal de Agentes (#79)"). Valida la tabla de `notas.md`, cuyo formato queda documentado.
+- **`design-link.mjs`**: la tabla "Especificación por pantalla" del MANIFEST es el mapa pantalla → historias; escribe las líneas del PRD y de `stories.md` y el bloque del `jira-preview.md`, idempotente. Reproduce byte a byte el enlazado manual de Roles y Permisos.
+- **Estándar** `standards/design-spec.md` (estructura, formatos y el contrato que lee el `design-source.sh` de Dev) y plantillas `templates/design-manifest.md` y `templates/design-notas.md`.
+- **`intake-lint`**: acepta URLs de Claude Design en `figma_url`; una versión con `source/` y MANIFEST ya no es "snapshot incompleto"; avisa pantallas sin `notas.md` o `a-validar.md`, `notas.md` sin la tabla estándar, MANIFEST sin la tabla o con carpetas que no existen, y pantallas sin historia.
+- **`siguiente`**: propone `specs` cuando la última versión con código fuente tiene superficies sin especificación, pantallas sin notas o sin historia.
+- **`stories-ready`**: leía de cada historia solo el primer renglón (dentro del template literal, `$(?![\s\S])` perdía las barras), y de ahí los 🟠 «sin criterios» falsos de Roles y Permisos. Ahora lee la sección entera y cuenta un link a `specs/` o a `claude.ai/design` como anclaje de diseño. Los renglones *(criterio principal)* que se agregaron como workaround ya no hacen falta.
+- **`jira-diff`**: un spec enlazado en una historia ya creada cuenta como `+ spec del diseño`, no como «solo redacción».
+- **Tests**: `tests/design.test.mjs` (zip y zip-slip, congelado y revisión de secretos, spec, a-validar, enlazado + lint + siguiente, servidor). El CI chequea también la sintaxis de `scripts/*.js`.
+
 ## v1.22.0 — Usar el motor sin recordar verbos ni slugs
 
 Tres cambios que atacan lo mismo: el motor tenía dos mecanismos para ahorrarle memoria al PM, y uno estaba roto y el otro no existía.

@@ -11,6 +11,7 @@ import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { join, basename, relative } from 'node:path';
 import { execSync } from 'node:child_process';
 import { readMaybe, parseFrontmatter, parseTable, STORY, DUDAS, DUDA, dudaOpen, dudaPending, storyClosed, stateOf, asList } from './lib/md.mjs';
+import { specFolders, findTable, cell, SPECS_HEADERS } from './lib/design.mjs';
 
 const args = process.argv.slice(2);
 const opt = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
@@ -60,6 +61,24 @@ const logDate = gitDate('decision-log.md');
 const hasTests = existsSync(join(dir, 'test-cases.csv'));
 const reconciled = /Reconciliación con el cerebro[^\n]*?(\d{4}-\d{2}-\d{2})/.exec(readMaybe(join(dir, 'decision-log.md')) || '');
 
+// Diseño congelado desde el código fuente (Claude Design) en la última versión que lo tenga: superficies sin
+// especificación por pantalla, pantallas sin notas.md o sin historia en la tabla del MANIFEST.
+const figmaDir = join(dir, 'figma');
+const codeVersions = existsSync(figmaDir) ? readdirSync(figmaDir, { withFileTypes: true }).filter(d => d.isDirectory() && readdirSync(join(figmaDir, d.name), { withFileTypes: true }).some(x => x.isDirectory() && existsSync(join(figmaDir, d.name, x.name, 'source')))).map(d => d.name).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) : [];
+const designGap = (() => {
+  const v = codeVersions[codeVersions.length - 1];
+  if (!v) return null;
+  const vDir = join(figmaDir, v);
+  const folders = specFolders(vDir);
+  const sups = readdirSync(vDir, { withFileTypes: true }).filter(x => x.isDirectory() && existsSync(join(vDir, x.name, 'source'))).map(x => x.name);
+  const sinSpecs = sups.filter(sup => !folders.some(f => f.startsWith(`${sup}/`)));
+  const sinNotas = folders.filter(f => !existsSync(join(vDir, f, 'notas.md')) || !existsSync(join(vDir, f, 'a-validar.md')));
+  const t = findTable(readMaybe(join(vDir, 'MANIFEST.md')), SPECS_HEADERS.slice(0, 3));
+  const sinHistoria = t ? t.rows.filter(r => !/\b[SH]\d+/.test(cell(t, r, 'Historias'))).length : folders.length;
+  const why = [sinSpecs.length && `${sinSpecs.join(', ')} sin especificación por pantalla`, sinNotas.length && `${sinNotas.length} pantalla(s) sin notas.md o a-validar.md`, folders.length && sinHistoria && `${sinHistoria} pantalla(s) sin historia enlazada`].filter(Boolean);
+  return why.length ? { v, why: `figma/${v}: ${why.join('; ')}` } : null;
+})();
+
 const C = [];
 const add = (rank, verb, why, cmd) => C.push({ rank, verb, why, cmd });
 
@@ -69,6 +88,7 @@ if (blocking.length) {
   const why = nOpen ? `${blocking.length} duda(s) abiertas sin llevar al canal, ${nOpen} de ellas sobre historias sin cerrar` : `${blocking.length} duda(s) abiertas que contradicen el PRD o preguntan a Producto, todavía sin llevar al canal`;
   add(20, 'preguntar', why, `/argos-product:intake preguntar ${slug}`);
 }
+if (designGap) add(25, 'specs', `${designGap.why} — Dev construye desde ahí`, `/argos-product:intake specs ${slug}`);
 // alcanza con que haya historias con key: no todos los intakes declaran `jira_epics` en el STATUS
 const epics = asList(fm.jira_epics);
 if ((epics.length || inJira.length) && days(storiesDate) > 7) add(30, 'sync', `el estado de Jira no se trae desde hace ${days(storiesDate)} días${epics.length ? ` (épica ${epics.join(', ')})` : `; el STATUS no declara \`jira_epics\`, hay que pasarle las keys`}`, `/argos-product:intake sync ${slug}`);
@@ -81,7 +101,7 @@ if (closed.length === live.length && live.length && status !== 'done') add(90, '
 add(999, 'ver', 'mirar el panel del intake', `/argos-product:intake ver ${slug}`);
 
 C.sort((a, b) => a.rank - b.rank);
-const facts = { slug, status, stories: { total: live.length, closed: closed.length, inJira: inJira.length }, dudas: { total: dudas.length, open: open.length, inThread: inThread.length, blocking: blocking.length }, lastSync: storiesDate, lastLog: logDate, lastUpdate, avance: av ? av.capturedAt : null };
+const facts = { slug, status, design: designGap, stories: { total: live.length, closed: closed.length, inJira: inJira.length }, dudas: { total: dudas.length, open: open.length, inThread: inThread.length, blocking: blocking.length }, lastSync: storiesDate, lastLog: logDate, lastUpdate, avance: av ? av.capturedAt : null };
 
 if (asJson) { console.log(JSON.stringify({ today, facts, next: C[0], candidates: C }, null, 2)); process.exit(0); }
 const top = C[0];

@@ -35,11 +35,11 @@ if (!rows.length) { console.error('✗ stories.md sin tabla índice'); process.e
 
 const sidOf = id => { const m = String(id).match(/\b([SH]\d+[a-z]?)\s*$/i); return m ? m[1].toUpperCase() : ''; };
 const GWT = /^\s*(?:[-*]|\d+\.)\s*(?:\[[ x]\]\s*)?(?:\**CA-[\w.]+\**\s*[·:-]\s*)?\**(?:Dad[oa]s?\b.*\b(?:cuando|entonces)\b|Cuando\b.*\b(?:el sistema|debe)\b)/im;
-const FIGMA = /figma\.com\/(design|file|proto)\//i;
+const FIGMA = /figma\.com\/(design|file|proto)\/|claude\.ai\/design\/|figma\/v[\w.]+\/[^\s`)]+\/specs\//i;
 
 // Secciones de detalle por historia: `### <id>` o `## <id>` en stories.md, PRD §6 y jira-preview.
 function sectionFor(text, sid, fullId) {
-  const rx = new RegExp(`^#{2,4}\\s+[^\\n]*\\b(?:${fullId.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}|${sid})\\b[^\\n]*\\n([\\s\\S]*?)(?=^#{2,4}\\s|$(?![\s\S]))`, 'mi');
+  const rx = new RegExp(`^#{2,4}\\s+[^\\n]*\\b(?:${fullId.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}|${sid})\\b[^\\n]*\\n([\\s\\S]*?)(?=^#{2,4}\\s|$(?![\\s\\S]))`, 'mi');
   const m = text.match(rx); return m ? m[1] : '';
 }
 const closedIds = new Set(rows.filter(r => storyClosed(r, fm.jira_goal_status)).map(r => sidOf(STORY.id(r))));
