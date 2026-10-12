@@ -56,7 +56,7 @@ export function designSystemOf(supDir, override) {
 
 // --------------------------------------------------------------- tablas editables en su lugar
 const isRow = l => /^\s*\|/.test(l);
-const cellsOf = l => l.split('|').slice(1, -1).map(c => c.trim());
+const cellsOf = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
 const isSep = cells => cells.length && cells.every(c => /^:?-{2,}:?$/.test(c.replace(/\s/g, '')));
 
 // Primera tabla cuyo encabezado tiene TODAS las columnas pedidas (comparadas normalizadas).

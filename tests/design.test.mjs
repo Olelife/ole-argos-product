@@ -242,3 +242,105 @@ test('notas.md: la tabla fija se valida por encabezado; specLayout entiende la r
   assert.deepEqual([l.version, l.superficie, l.pantalla, l.intakeDir], ['v4', 'asesores', 's15-home', join('/r', 'intakes', 'x')]);
   assert.equal(specLayout('/r/intakes/x/figma/v4/asesores'), null);
 });
+
+// --- regresiones de la revisión del PR #32
+const withFiles = (tmp, name, overrides) => {
+  const files = walk(PROJECT).map(p => ({ name: relative(PROJECT, p).split('\\').join('/'), data: readFileSync(p) }));
+  const byName = new Map(files.map(f => [f.name, f]));
+  for (const [n, data] of Object.entries(overrides)) byName.set(n, { name: n, data });
+  const zip = join(tmp, name);
+  writeFileSync(zip, writeZip([...byName.values()]));
+  return zip;
+};
+
+test('design-freeze: revisa cualquier archivo de texto y sigue import/@import/url() relativos', () => {
+  const { tmp, dir } = intake();
+  const page = readFileSync(join(PROJECT, 'Pantalla v2.dc.html'), 'utf8').replace('</head>', '<script type="text/babel" src="app.jsx"></script>\n<script type="module" src="main.js"></script>\n<link rel="stylesheet" href="styles/base.css">\n</head>');
+  const overrides = {
+    'Pantalla v2.dc.html': page,
+    'main.js': "import { h } from './lib/helper.js';\nimport('./lazy.js');\n",
+    'lib/helper.js': 'export const h = 1;\n',
+    'lazy.js': 'export default 2;\n',
+    'styles/base.css': '@import url("theme.css");\nbody{background:url(\'../img/bg.png\')}\n',
+    'styles/theme.css': ':root{}\n',
+    'img/bg.png': 'png',
+  };
+  const ok = run('design-freeze.mjs', withFiles(tmp, 'refs.zip', { ...overrides, 'app.jsx': 'export default () => null;\n' }), join(dir, 'figma/v2/backoffice'), '--entry', 'Pantalla v2.dc.html', '--date', '2026-10-12');
+  assert.equal(ok.status, 0, ok.stderr);
+  const src = join(dir, 'figma/v2/backoffice/source');
+  for (const f of ['app.jsx', 'main.js', 'lib/helper.js', 'lazy.js', 'styles/base.css', 'styles/theme.css', 'img/bg.png']) assert.ok(existsSync(join(src, f)), f);
+  const bad = run('design-freeze.mjs', withFiles(tmp, 'jsx.zip', { ...overrides, 'app.jsx': `const key = "${'AKIA'}${'Q'.repeat(16)}";\n` }), join(dir, 'figma/v3/backoffice'), '--entry', 'Pantalla v2.dc.html', '--date', '2026-10-12');
+  assert.equal(bad.status, 3, 'una clave en un .jsx también frena');
+  assert.match(bad.stdout, /clave de AWS: app\.jsx:1/);
+  rmSync(tmp, { recursive: true, force: true });
+});
+
+test('design-freeze: --force rehace la carpeta y el destino tiene que ser figma/<vN>/<superficie>', () => {
+  const { tmp, dir } = intake();
+  const zip = projectZip(tmp);
+  const sup = join(dir, 'figma/v2/backoffice');
+  run('design-freeze.mjs', zip, sup, '--entry', 'Pantalla v2.dc.html', '--date', '2026-10-12');
+  const r = run('design-freeze.mjs', zip, sup, '--entry', 'Otra.dc.html', '--date', '2026-10-12', '--force');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(existsSync(join(sup, 'source/Pantalla v2.dc.html')), false, 'no quedan archivos de la corrida anterior');
+  assert.ok(existsSync(join(sup, 'source/Otra.dc.html')));
+  assert.equal(run('design-freeze.mjs', zip, join(dir, 'figma/v2'), '--entry', 'Otra.dc.html', '--date', '2026-10-12').status, 1);
+  rmSync(tmp, { recursive: true, force: true });
+});
+
+test('design-link: separadores, ### Diseño en columna 0, ids con letra y frames que siguen al bloque', () => {
+  const { tmp, dir, p } = specFixture();
+  run('design-spec.mjs', p);
+  writeFileSync(join(p, 'notas.md'), NOTAS);
+  run('design-avalidar.mjs', p);
+  const sp = join(dir, 'stories.md');
+  writeFileSync(sp, readFileSync(sp, 'utf8')
+    .replace('| S3 | Exportar |', '| S2b | Variante | 🟡 | Staging | SO-118 | — |\n| S3 | Exportar |')
+    .trimEnd() + '\n\n---\n\n### S3 · Exportar\n**Como** asesor **quiero** exportar **para** trabajarlo afuera.\n<!-- fin S3 -->\n\n---\n');
+  const jp = join(dir, 'jira-preview.md');
+  writeFileSync(jp, readFileSync(jp, 'utf8').replace('  ## Criterios de aceptación', '### Criterios de aceptación').replace('  ## Diseño', '### Diseño'));
+  run('design-link.mjs', dir, '--version', 'v2');
+  const man = join(dir, 'figma/v2/MANIFEST.md');
+  writeFileSync(man, readFileSync(man, 'utf8').replace('| p1-listado | — |', '| P1 · Listado | S1, s3, S2b |'));
+  const r = run('design-link.mjs', dir, '--version', 'v2');
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /S2B +p1-listado +→ .*· ya en Jira \(SO-118\)/);
+  assert.match(r.stdout, /S3 +p1-listado +→ stories, preview/);
+  const stories = readFileSync(sp, 'utf8');
+  assert.match(stories, /- Spec v2: `figma\/v2\/backoffice\/specs\/p1-listado\/` \(spec\.json · copy\.md · a-validar\.md\)\n\n---\n\n### S3/, 'la de S1 queda antes del separador');
+  assert.match(stories, /trabajarlo afuera\.\n- Spec v2: [^\n]+\n<!-- fin S3 -->\n\n---\n$/, 'la de S3 queda dentro de su sección, antes del comentario');
+  let prev = readFileSync(jp, 'utf8');
+  const s3 = prev.slice(prev.indexOf('## S3'));
+  assert.equal((s3.match(/Diseño\s*$/gm) || []).length, 1, 'un solo Diseño en S3');
+  assert.match(s3, /### Diseño\n\n {2}- \[Listado\][^\n]+\n\n\*\*Especificación desde el código fuente del diseño/);
+  writeFileSync(jp, prev.replace('/p1-listado/a-validar.md)\n\n---', '/p1-listado/a-validar.md)\n  - [Frame nuevo](https://www.figma.com/design/FILEKEY/Archivo?node-id=99-1)\n\n---'));
+  run('design-link.mjs', dir, '--version', 'v2', '--system', 'Otro nombre');
+  prev = readFileSync(jp, 'utf8');
+  assert.ok(prev.includes('sistema de diseño Otro nombre'), 'el bloque se rehízo');
+  assert.ok(prev.includes('- [Frame nuevo](https://www.figma.com/design/FILEKEY/Archivo?node-id=99-1)'), 'el frame que seguía al bloque sigue ahí');
+  rmSync(tmp, { recursive: true, force: true });
+});
+
+test('design-serve: rechaza segmentos con punto y pedidos de otro origen', async () => {
+  const { tmp, dir } = intake();
+  run('design-freeze.mjs', projectZip(tmp), join(dir, 'figma/v2/backoffice'), '--entry', 'Pantalla v2.dc.html', '--date', '2026-10-12');
+  const port = 20000 + Math.floor(Math.random() * 2000);
+  const srv = spawn(process.execPath, [join(ROOT, 'scripts/design-serve.mjs'), join(dir, 'figma/v2'), '--port', String(port)]);
+  const http = await import('node:http');
+  const post = (path, headers = {}) => new Promise((res, rej) => {
+    const req = http.request({ host: '127.0.0.1', port, path, method: 'POST', headers }, r => { r.resume(); res(r.statusCode); });
+    req.on('error', rej); req.end('{}');
+  });
+  try {
+    await new Promise((res, rej) => { srv.stdout.once('data', res); setTimeout(() => rej(new Error('el servidor no arrancó')), 5000); });
+    for (const bad of ['backoffice/specs/../raw-esc.json', './specs/x/raw-dot.json', 'backoffice/specs/./raw-x.json']) {
+      assert.equal(await post(`/__save?path=${encodeURIComponent(bad)}`), 403, bad);
+    }
+    assert.equal(await post('/__save?path=backoffice/specs/p1/raw-a.json', { Origin: 'https://evil.example' }), 403, 'otro origen');
+    assert.equal(await post('/__save?path=backoffice/specs/p1/raw-a.json', { Host: `evil.example:${port}` }), 403, 'otro host');
+    assert.equal(await post('/__save?path=backoffice/specs/p1/raw-a.json', { Origin: `http://127.0.0.1:${port}` }), 200);
+  } finally {
+    srv.kill();
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
