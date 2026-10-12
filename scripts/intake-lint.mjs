@@ -9,6 +9,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { readMaybe, parseFrontmatter, parseTable, STORY, DUDA, asList, figmaUrls, jiraKey, DUDAS, stateOf, col } from './lib/md.mjs';
+import { specFolders, findTable, cell, sameKey, checkNotas, SPEC_FILES, SPECS_HEADERS } from './lib/design.mjs';
 
 const args = process.argv.slice(2);
 const dir = args[0];
@@ -42,14 +43,16 @@ if (!isTransversal) {
   const order = asList(fm.jira_stage_order);
   if (order.length && fm.jira_goal_status && order[order.length - 1] !== fm.jira_goal_status) warn(`STATUS: jira_goal_status "${fm.jira_goal_status}" no es la última etapa de jira_stage_order ("${order[order.length - 1]}")`);
   const fu = figmaUrls(fm);
-  const badFigma = fu.filter(f => !/^https:\/\/www\.figma\.com\//.test(f.url));
-  if (badFigma.length) err(`STATUS: figma_url con valores que no son URLs de Figma: ${badFigma.map(f => f.key).join(', ')}`);
+  const badFigma = fu.filter(f => !/^https:\/\/(?:www\.figma\.com|claude\.ai\/design)\//.test(f.url));
+  if (badFigma.length) err(`STATUS: figma_url con valores que no son URLs de Figma ni de Claude Design: ${badFigma.map(f => f.key).join(', ')}`);
   else if (fu.length) ok(`STATUS: ${fu.length} URL(s) de Figma válidas`);
   for (const k of ['roadmap_artifact_url', 'avance_artifact_url', 'landing_url']) if (fm[k] && !/^https:\/\//.test(String(fm[k]))) err(`STATUS: ${k} no es una URL`);
   if (fm.slack_channel && !/^#[a-z0-9_-]+$|^C[A-Z0-9]{8,}$/.test(String(fm.slack_channel))) warn(`STATUS: slack_channel "${fm.slack_channel}" no parece #canal ni ID de canal`);
   if (fm.figma_version && fm.figma_version !== '—') {
-    const sp = join(dir, 'figma', String(fm.figma_version), 'structure.json');
-    existsSync(sp) ? ok(`figma/${fm.figma_version}/structure.json presente`) : warn(`STATUS: figma_version ${fm.figma_version} pero no existe figma/${fm.figma_version}/structure.json`);
+    const vd = join(dir, 'figma', String(fm.figma_version));
+    if (existsSync(join(vd, 'structure.json'))) ok(`figma/${fm.figma_version}/structure.json presente`);
+    else if (existsSync(join(vd, 'MANIFEST.md')) && specFolders(vd).length + readdirSync(vd, { withFileTypes: true }).filter(d => d.isDirectory() && existsSync(join(vd, d.name, 'source'))).length) ok(`figma/${fm.figma_version}/ congelado desde el código fuente (MANIFEST.md presente)`);
+    else warn(`STATUS: figma_version ${fm.figma_version} pero no existe figma/${fm.figma_version}/structure.json`);
   }
 }
 
@@ -136,7 +139,37 @@ if (!isTransversal) {
 const fDir = join(dir, 'figma');
 if (existsSync(fDir)) {
   const vers = readdirSync(fDir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
-  for (const v of vers) if (!existsSync(join(fDir, v, 'structure.json'))) warn(`figma/${v}/ sin structure.json (snapshot incompleto)`);
+  for (const v of vers) {
+    const vDir = join(fDir, v);
+    const sources = readdirSync(vDir, { withFileTypes: true }).filter(d => d.isDirectory() && existsSync(join(vDir, d.name, 'source'))).map(d => d.name);
+    if (!existsSync(join(vDir, 'structure.json'))) {
+      if (!sources.length) warn(`figma/${v}/ sin structure.json (snapshot incompleto)`);
+      else if (existsSync(join(vDir, 'MANIFEST.md'))) ok(`figma/${v}/ código fuente de Claude Design (${sources.join(', ')})`);
+      else warn(`figma/${v}/ tiene source/ pero no MANIFEST.md (sin hash ni revisión de seguridad registrados)`);
+    }
+    // --- 4b · especificación por pantalla (standards/design-spec.md)
+    const folders = specFolders(vDir);
+    for (const f of folders) {
+      const p = join(vDir, f);
+      const missing = SPEC_FILES.filter(x => !existsSync(join(p, x)));
+      if (missing.length) warn(`figma/${v}/${f}/ sin ${missing.join(', ')}`);
+      const notas = readMaybe(join(p, 'notas.md'));
+      if (!notas) warn(`figma/${v}/${f}/ sin notas.md (el a-validar no cruza textos ni comportamiento con el PRD)`);
+      else if (!checkNotas(notas).ok) warn(`figma/${v}/${f}/notas.md: ${checkNotas(notas).why}`);
+    }
+    if (folders.length) {
+      const t = findTable(readMaybe(join(vDir, 'MANIFEST.md')), SPECS_HEADERS.slice(0, 3));
+      if (!t) warn(`figma/${v}/MANIFEST.md sin la tabla "Especificación por pantalla" (corré design-link.mjs)`);
+      else {
+        const known = r => folders.some(f => sameKey(cell(t, r, 'Carpeta'), f) || sameKey(cell(t, r, 'Carpeta'), f.split('/').pop()));
+        const ghost = t.rows.filter(r => cell(t, r, 'Carpeta') && !known(r)).map(r => cell(t, r, 'Carpeta'));
+        if (ghost.length) warn(`figma/${v}/MANIFEST.md cita carpetas de spec que no existen: ${ghost.join(', ')}`);
+        const sinHistoria = t.rows.filter(r => known(r) && !/\b[SH]\d+/.test(cell(t, r, 'Historias')));
+        if (sinHistoria.length) warn(`figma/${v}/: ${sinHistoria.length} pantalla(s) sin historia en la tabla del MANIFEST`);
+        else ok(`figma/${v}/: ${folders.length} pantalla(s) con spec, todas con historia`);
+      }
+    }
+  }
 }
 
 const summary = { intake: slugDir, errors, warns, oks };
