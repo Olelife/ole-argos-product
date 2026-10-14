@@ -2,11 +2,40 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.24.0 — `layer` como metadata nativa de Bedrock (RFC-mini)
+
+Nace de un piloto en `ole-argos-product-data/intakes/sistema-modulos-por-pais`: separar el corpus en capas
+(functional · technical · traceability) para que el bot de Slack no le muestre a Negocio nombres de handler
+ni bugs internos, y a Producto sí. El piloto etiquetaba a mano 4 docs con subcarpetas; esta versión lo
+resuelve para **todo el corpus, incluidas las historias que entren de acá en adelante**, sin que ningún PM
+cambie cómo escribe un PRD.
+
+- **`rag-sync.mjs` clasifica cada archivo por capa.** Tabla `DOCTYPE_LAYER`: `prd`/`stories` → `functional`
+  (el standard de PRD ya prohíbe el "cómo técnico", así que un PRD nace mayormente funcional), `decision-log`/
+  `jira-preview`/`jira-updates`/`status-update`/`prd-changelog`/`prd-review`/`status` → `traceability` (estado
+  de proceso, no comportamiento del sistema), `standard` → `technical`. Para `analysis`/`analysis-mermaid`
+  (docs de audit que pueden mezclar las tres) no hay default fijo: resuelve por frontmatter `layer:` explícito,
+  y si falta cae a `functional` (default seguro — mejor exponer de más un doc técnico ocasional que ocultarle
+  a Producto uno funcional).
+- **Sidecar `<key>.metadata.json` por objeto** (`metadataAttributes`, el formato que Bedrock indexa como
+  atributo *filtrable* — a diferencia del header S3 `Metadata` que ya existía, que es solo informativo). El
+  consumidor puede ahora pedir `retrievalConfiguration.managedSearchConfiguration.filter` por `layer` en vez
+  de post-filtrar por regex sobre la ruta del S3 key.
+- **`rag-sync.mjs` gana exports** (`layerFor`, `metadataSidecarFor`, `buildManifest`, …) detrás de un guard
+  `isMain`, para poder testearlo con `node --test` sin disparar la ejecución real (que exige `repoRoot` por
+  argv). Cero cambio de comportamiento en el CLI.
+- **8 tests nuevos** (`tests/rag-sync.test.mjs`): default por docType, override por frontmatter, valor
+  inválido no rompe (cae al default), case-insensitive, shape del sidecar, y que todo archivo del fixture
+  salga con una capa válida.
+
+Sin acción para intakes existentes: un re-sync completo (`gh workflow run rag-sync.yml` en `ole-argos-brain`
+y `ole-argos-product-data`) retag-uea los ~130 docs ya indexados sin tocar un solo PRD.
+
 ## v1.23.1 — `rag-sync` arma el manifiesto en un segundo
 
 - **`rag-sync.mjs`**: el último commit de cada archivo sale de **una** pasada de `git log` (sin renombres y con los merges que cambian el archivo frente a todos sus padres), en vez de dos `git log -1 -- <archivo>` por archivo, que recorrían la historia entera cada vez. En el cerebro (2.467 archivos) el manifiesto pasa de ~2 min en una laptop y ~9 min en el Action, donde se armaba dos veces por corrida, a ~1 s, con el mismo `sha` y la misma fecha en todos los archivos. El Action del cerebro bajaba de ~23 min por push; junto con `cancel-in-progress` en los dos repos, era una parte grande de la cuota de Actions de la organización.
 - **Tests**: `tests/rag-sync.test.mjs` compara el `sha` de cada archivo contra `git log -1 -- <archivo>` en un repo con un merge resuelto a mano y nombres con acento.
-- **Para usarlo**: subir la variable `RAG_MOTOR_TAG` a `v1.23.1` en `ole-argos-brain` y `ole-argos-product-data`.
+- **Para usarlo**: subir la variable `RAG_MOTOR_TAG` a `v1.23.1` en `ole-argos-brain` y `ole-argos-product-data` (superado por `v1.24.0` más arriba).
 
 ## v1.23.0 — Especificación desde el código fuente de Claude Design: verbo `specs`
 
