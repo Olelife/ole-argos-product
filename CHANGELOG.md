@@ -2,6 +2,12 @@
 
 Una sección por versión publicada (tag `vX.Y.Z`). El CI exige que la versión de `plugin.json` tenga su sección acá.
 
+## v1.23.1 — `rag-sync` arma el manifiesto en un segundo
+
+- **`rag-sync.mjs`**: el último commit de cada archivo sale de **una** pasada de `git log` (sin renombres y con los merges que cambian el archivo frente a todos sus padres), en vez de dos `git log -1 -- <archivo>` por archivo, que recorrían la historia entera cada vez. En el cerebro (2.467 archivos) el manifiesto pasa de ~2 min en una laptop y ~9 min en el Action, donde se armaba dos veces por corrida, a ~1 s, con el mismo `sha` y la misma fecha en todos los archivos. El Action del cerebro bajaba de ~23 min por push; junto con `cancel-in-progress` en los dos repos, era una parte grande de la cuota de Actions de la organización.
+- **Tests**: `tests/rag-sync.test.mjs` compara el `sha` de cada archivo contra `git log -1 -- <archivo>` en un repo con un merge resuelto a mano y nombres con acento.
+- **Para usarlo**: subir la variable `RAG_MOTOR_TAG` a `v1.23.1` en `ole-argos-brain` y `ole-argos-product-data`.
+
 ## v1.23.0 — Especificación desde el código fuente de Claude Design: verbo `specs`
 
 El diseño de los intakes recientes ya no viene de Figma sino de prototipos de Claude Design. La extracción que se usó en Incentivos (`figma/v4`) y Roles y Permisos (`figma/v2`) vivía suelta en el repo de datos (`tools/design-spec/`), con valores fijos a un portal y el paso del navegador hecho a mano. Ahora es parte del Motor.
