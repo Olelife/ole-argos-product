@@ -15,7 +15,7 @@
 // todo (exit 3) hasta que el PM la revise y se vuelva a correr con --accept-findings; los datos personales
 // se reportan para confirmar que son de ejemplo. Escribe el hash del zip y la fila de la superficie en
 // `figma/<vN>/MANIFEST.md` (lo crea desde templates/design-manifest.md si falta).
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,7 @@ const srcDir = join(supDir, 'source');
 const versionDir = dirname(supDir);
 const superficie = basename(supDir);
 const version = basename(versionDir);
+if (basename(dirname(versionDir)) !== 'figma') { console.error(`✗ el destino tiene que ser intakes/<slug>/figma/<vN>/<superficie> (vino ${destArg})`); process.exit(1); }
 
 const files = readZip(zipPath).filter(e => !e.isDir);
 const byName = new Map(files.map(e => [e.name, e]));
@@ -70,15 +71,26 @@ const EXCLUDED_DIR = /^(uploads|scratch|export)\//;
 const isMeta = n => n.split('/').some(s => s.startsWith('.') || s === '__MACOSX');
 const keep = new Set();
 const components = [];
-const refsOf = (name, html) => {
+// Referencias relativas de una página (src/href, dc-import), un script (import) o una hoja de estilos (@import, url()).
+const SCANNED = /\.(html?|[mc]?jsx?|tsx?|css)$/i;
+const refsOf = (name, text) => {
   const out = [];
-  for (const m of html.matchAll(/<dc-import\b[^>]*\bname=["']([^"']+)["']/gi)) out.push({ ref: `${m[1]}.dc.html`, component: m[1] });
-  for (const m of html.matchAll(/\b(?:src|href)\s*=\s*["']([^"'#?]+)[^"']*["']/gi)) {
-    const v = m[1].trim();
-    if (!v || /^(?:[a-z][a-z0-9+.-]*:|\/\/|\/)/i.test(v) || v.includes('{{')) continue;
+  const local = v => {
+    v = v.trim().replace(/[?#].*$/, '');
+    if (!v || /^(?:[a-z][a-z0-9+.-]*:|\/\/|\/)/i.test(v) || v.includes('{{')) return;
     let p = join(dirname(name), v).split('\\').join('/');
     try { p = decodeURI(p); } catch { /* deja el literal */ }
     out.push({ ref: p.replace(/^\.\//, '') });
+  };
+  if (/\.html?$/i.test(name)) {
+    for (const m of text.matchAll(/<dc-import\b[^>]*\bname=["']([^"']+)["']/gi)) out.push({ ref: `${m[1]}.dc.html`, component: m[1] });
+    for (const m of text.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/gi)) local(m[1]);
+  }
+  if (/\.([mc]?jsx?|tsx?|html?)$/i.test(name)) {
+    for (const m of text.matchAll(/\b(?:import|export)\b[^'"`;]*?\bfrom\s*["'](\.{1,2}\/[^"']+)["']|\bimport\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)) local(m[1] || m[2]);
+  }
+  if (/\.(css|html?)$/i.test(name)) {
+    for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']?([^"')\s;]+)|\burl\(\s*["']?([^"')]+?)["']?\s*\)/gi)) local(m[1] || m[2]);
   }
   return out;
 };
@@ -86,7 +98,7 @@ const queue = [...entries];
 for (const e of entries) keep.add(e);
 while (queue.length) {
   const name = queue.shift();
-  if (!isPage(name)) continue;
+  if (!SCANNED.test(name)) continue;
   for (const { ref, component } of refsOf(name, textOf(name))) {
     if (!byName.has(ref) || keep.has(ref) || isMeta(ref)) continue;
     keep.add(ref);
@@ -111,7 +123,9 @@ for (const f of files) {
 const keptUploads = [...keep].filter(n => EXCLUDED_DIR.test(n));
 
 // --- revisión de credenciales y datos personales
-const TEXT = /\.(html?|m?js|css|json|md|txt|svg|xml|csv)$/i;
+// Se revisa todo lo que no sea binario (sin NUL en los primeros 8 KB), sin filtrar por extensión: un .jsx o un
+// .yml con una clave también se congela.
+const isText = name => !byName.get(name).data().subarray(0, 8192).includes(0);
 const CREDENTIALS = [
   ['clave de AWS', /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   ['clave privada', /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
@@ -134,7 +148,7 @@ const EMAIL = /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{
 const mask = s => (s.length <= 8 ? '****' : `${s.slice(0, 4)}…(${s.length} car.)`);
 const credentials = [], personal = [], emails = new Map();
 for (const name of [...keep].sort()) {
-  if (!TEXT.test(name)) continue;
+  if (!isText(name)) continue;
   const lines = textOf(name).split('\n');
   lines.forEach((line, i) => {
     for (const [kind, rx] of CREDENTIALS) for (const m of line.matchAll(rx)) credentials.push({ file: name, line: i + 1, kind, match: mask(m[0]) });
@@ -184,6 +198,7 @@ if (existsSync(srcDir) && readdirSync(srcDir).length && !args.includes('--force'
   process.exit(1);
 }
 
+if (existsSync(srcDir)) rmSync(srcDir, { recursive: true, force: true });
 for (const name of keptList) {
   const out = join(srcDir, name);
   mkdirSync(dirname(out), { recursive: true });

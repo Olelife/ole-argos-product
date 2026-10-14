@@ -18,9 +18,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Cada corrida sube el corpus del HEAD entero: una más nueva deja obsoleta a la que está corriendo.
+# Cancelarla ahorra Actions y no pierde nada: si la que se cancela ya había pedido un ingestion
+# job, la nueva espera y reintenta (rag-sync.mjs).
 concurrency:
   group: rag-sync-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   id-token: write   # para OIDC → aws-actions/configure-aws-credentials

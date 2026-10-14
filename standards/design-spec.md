@@ -30,10 +30,11 @@ figma/<vN>/
 - **Export:** Share → Export → Project HTML → "Project archive" (.zip), bajado con Claude in Chrome (el navegador de
   la app no tiene sesión en claude.ai) y **con confirmación en el chat por cada descarga** (archivo, proyecto, tamaño).
 - **Se guarda:** las entradas (`--entry` o el `?file=` de `--project-url`), sus `dc-import` (recursivo), todo `src`/`href`
-  relativo que exista en el zip (incluido un `uploads/` que el prototipo sí use), `assets/` y `_ds/`.
+  relativo que exista en el zip (incluido un `uploads/` que el prototipo sí use), los `import` relativos de sus scripts y los
+  `@import`/`url()` de sus hojas de estilo, `assets/` y `_ds/`.
 - **No se guarda:** versiones anteriores (`<Nombre> vN.dc.html` de la misma familia), otros archivos del proyecto,
   `uploads/` sin referenciar, `scratch/`, `export/` ni metadatos (`.thumbnail`, `.image-slots.state.json`).
-- **Revisión de seguridad** sobre lo que se guarda: claves de AWS/GitHub/Slack/Google/Stripe, `sk-…`, JWT, claves
+- **Revisión de seguridad** sobre todo lo que se guarda que no sea binario (sin filtrar por extensión): claves de AWS/GitHub/Slack/Google/Stripe, `sk-…`, JWT, claves
   privadas, secretos asignados, URLs con usuario y clave, `Bearer`. **Una sola coincidencia frena todo (exit 3)**: el PM
   mira los hallazgos (enmascarados) y solo con su OK se vuelve a correr con `--accept-findings`. Correos, CPF/CNPJ y CURP
   se listan para confirmar que son datos de ejemplo del prototipo.
@@ -42,8 +43,8 @@ figma/<vN>/
 
 ## 2 · Extraer (navegador de la app, `design-serve.mjs` + `design-extract.js`)
 
-- `design-serve.mjs <figma/vN>` sirve la versión en `127.0.0.1` (los `.dc.html` no abren con `file://`) y solo acepta
-  escribir `raw-*.json` bajo `<superficie>/specs/<pantalla>/`.
+- `design-serve.mjs <figma/vN>` sirve la versión en `127.0.0.1` (los `.dc.html` no abren con `file://`), solo atiende
+  pedidos con Host/Origin locales y solo acepta escribir `raw-*.json` bajo `<superficie>/specs/<pantalla>/`.
 - Viewport **1440×900**. Se inyecta `design-extract.js` desde `/__extract.js`.
 - **Barra lateral** (el menú del portal no es parte de la pantalla): `__side()` la detecta sola — `<nav>`/`<aside>`
   anclado a la izquierda y de alto completo (un riel de íconos incluido), un bloque fixed/sticky con esa forma, o la
@@ -55,7 +56,7 @@ figma/<vN>/
 
 ## 3 · Formatos
 
-**`raw-<estado>.json`** — `{ label, url, viewport, pageH, sideX, sideBy, tokens, nodes[] }`; cada nodo con texto
+**`raw-<estado>.json`** — el nombre en kebab-case ASCII (`raw-sin-resultados.json`); la etiqueta (`label`) puede llevar acentos. `{ label, url, viewport, pageH, sideX, sideBy, tokens, nodes[] }`; cada nodo con texto
 propio, fondo, borde o sombra: `{ i, tag, text?, x, y, w, h, font?: "familia|tamaño|peso|alto de línea|transform|espaciado", color?, deco?, bg?, border?, radius?, shadow?, pad? }`. Colores en `#RRGGBB` o `#RRGGBB@alfa`.
 
 **`spec.json`** — contrato con Dev, ver abajo:

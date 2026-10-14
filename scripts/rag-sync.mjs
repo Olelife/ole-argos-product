@@ -175,22 +175,36 @@ function repoNameFrom(rootPath) {
   } catch { return basename(rootPath); }
 }
 
-function shaFor(rootPath, relPath) {
+// El último commit de cada archivo, en UNA pasada de git log. Antes eran dos `git log -1 -- <archivo>`
+// por archivo, y cada uno recorre la historia entera: en el cerebro (miles de archivos) el manifiesto
+// tardaba ~9 min, y el Action lo armaba dos veces. Se recorre de lo más nuevo a lo más viejo y la
+// primera vez que aparece un archivo es su último commit, lo mismo que daba `git log -1 -- <archivo>`:
+// sin renombres (aquel tampoco los seguía) y con los merges que cambian el archivo frente a todos sus
+// padres (dense-combined), que es el criterio con el que `git log -- <archivo>` los muestra.
+function lastCommitByFile(rootPath) {
+  const map = new Map();
   try {
-    return execSync(`git log -1 --format=%H -- "${relPath}"`, { cwd: rootPath }).toString().trim().slice(0, 12);
-  } catch { return ''; }
-}
-
-function lastUpdatedFor(rootPath, relPath) {
-  try {
-    return execSync(`git log -1 --format=%aI -- "${relPath}"`, { cwd: rootPath }).toString().trim().slice(0, 10);
-  } catch { return ''; }
+    const out = execSync('git -c core.quotepath=off log --no-renames --diff-merges=dense-combined --format=%x01%H%x20%aI --name-only', {
+      cwd: rootPath, maxBuffer: 1024 * 1024 * 1024,
+    }).toString();
+    let commit = { sha: '', date: '' };
+    for (const line of out.split('\n')) {
+      if (line.startsWith('\x01')) {
+        const [sha, date] = line.slice(1).split(' ');
+        commit = { sha: sha.slice(0, 12), date: (date || '').slice(0, 10) };
+      } else if (line && !map.has(line)) {
+        map.set(line, commit);
+      }
+    }
+  } catch { /* sin git: el manifiesto sale sin sha ni fecha, como antes */ }
+  return map;
 }
 
 async function buildManifest(rootPath) {
   const files = await walk(rootPath);
   const rel = files.map(f => relative(rootPath, f));
   const repo = repoNameFrom(rootPath);
+  const commits = lastCommitByFile(rootPath);
   const kept = [], skipped = [], secrets = [];
 
   for (const rp of rel) {
@@ -222,8 +236,8 @@ async function buildManifest(rootPath) {
     kept.push({
       file: rp,
       size,
-      sha: shaFor(rootPath, rp),
-      lastUpdated: lastUpdatedFor(rootPath, rp),
+      sha: commits.get(rp)?.sha ?? '',
+      lastUpdated: commits.get(rp)?.date ?? '',
       metadata: {
         source: rule.source,
         repo,
@@ -387,5 +401,5 @@ if (isMain) {
 export {
   INCLUDE, EXCLUDE, DOCTYPE_LAYER, VALID_LAYERS, LAYER_DEFAULT,
   layerFor, metadataSidecarFor, parseFrontmatter, scanSecrets,
-  buildManifest, uploadS3, contentTypeFor, triggerIngestion,
+  buildManifest, uploadS3, contentTypeFor, triggerIngestion, lastCommitByFile,
 };
